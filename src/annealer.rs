@@ -1,4 +1,7 @@
-use crate::{cost, state, transition};
+use crate::cost::cost;
+use crate::state::States;
+use crate::timetable::Timetable;
+use crate::transition::transition;
 use rand::Rng;
 use std::f64::consts::E;
 
@@ -14,13 +17,10 @@ const INITIAL_TEMPERATURE: f64 = 1.0;
 // Number of steps between temperature change - Typically 100 to 1000
 const STEPS_PER_TEMP: i32 = 100;
 
-pub struct Annealer {
-    state: state::State,
-    data: state::Data,
-}
+pub struct Annealer {}
 
 impl Annealer {
-    pub fn anneal(&mut self) {
+    pub fn anneal(&mut self, timetable: &mut Timetable) {
         let mut rng = rand::thread_rng();
 
         // the current system temperature
@@ -42,20 +42,21 @@ impl Annealer {
         //let mut exponent: f64 = 0.0;
 
         // Initial neighbor
-        let mut neighbor;
+        let mut neighbor: States;
 
-        current_value = cost::cost(&self.state, &self.data);
+        current_value = cost(&mut timetable);
 
         for i in 1..COOLING_STEPS {
             temperature *= COOLING_FRACTION;
             start_value = current_value;
 
             for j in 1..STEPS_PER_TEMP {
-                neighbor = self.state.clone();
-                transition::transition(&mut self.state, &self.data);
+                neighbor = timetable.states.clone();
+
+                transition(&mut timetable);
 
                 flip = rng.gen_range(0.0..1.0);
-                delta = cost::cost(&self.state, &self.data);
+                delta = cost(&timetable);
                 // -(current_value - delta) / (BOLTZMANN_CONSTANT * temperature)
                 merit = E.powf((-delta / current_value) / (BOLTZMANN_CONSTANT * temperature));
 
@@ -67,7 +68,7 @@ impl Annealer {
                     current_value = current_value + delta;
                 } else {
                     // Reject
-                    self.state = neighbor;
+                    timetable.states = neighbor;
                 }
             }
         }

@@ -1,4 +1,4 @@
-use rstrain::{connection, passenger, state, station, train};
+use rstrain::{connection, entities, passenger, state, station, timetable, train};
 
 fn main() {
     let s1 = station::Station {
@@ -56,14 +56,17 @@ fn main() {
     };
     let passengers = vec![p1];
 
-    let data = state::Data {
-        stations: stations,
-        connections: connections,
-        trains: trains,
-        passengers: passengers,
+    let entities = entities::Entities {
+        stations,
+        connections,
+        trains,
+        passengers,
     };
 
-    let initial_state = state::initial(data);
+    let timetable = timetable::Timetable {
+        entities,
+        states: entities.init_states(),
+    };
 
-    println!("{}", initial_state.to_string());
+    println!("{}", timetable.to_string());
 }

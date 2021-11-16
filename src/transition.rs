@@ -1,28 +1,29 @@
+use crate::timetable::Timetable;
 use crate::{passenger, state, train, types};
 use rand::Rng;
 
-pub fn transition(state: &mut state::State, data: &state::Data) -> () {
+pub fn transition(tt: &mut Timetable) -> () {
     let rnd = rand::thread_rng();
     let decision = rnd.gen_range(0..4);
-    let t: types::Time = rnd.gen_range(0..state.p_journey.len());
+    let t: types::Time = rnd.gen_range(0..tt.states.len());
 
-    if decision == 0 && !detrain(&mut state, &data, t) {
-        depart(&mut state, &data, t);
-    } else if decision == 1 && !board(&mut state, &data, t) {
-        depart(&mut state, &data, t);
-    } else if decision == 2 && !switch_train_start(&mut state, &data, t) {
-        depart(&mut state, &data, t);
+    if decision == 0 && !detrain(&mut tt, t) {
+        depart(&mut tt, t);
+    } else if decision == 1 && !board(&mut tt, t) {
+        depart(&mut tt, t);
+    } else if decision == 2 && !switch_train_start(&mut tt, t) {
+        depart(&mut tt, t);
     } else {
-        depart(&mut state, &data, t);
+        depart(&mut tt, t);
     }
 }
 
 // Detrain a random person from a train
-fn detrain(state: &mut state::State, data: &state::Data, t: types::Time) -> bool {
+fn detrain(tt: &mut Timetable, t: types::Time) -> bool {
     false
 }
 
-fn board(state: &mut state::State, data: &state::Data, t: types::Time) -> bool {
+fn board(tt: &mut Timetable, t: types::Time) -> bool {
     let rnd = rand::thread_rng();
 
     // Filter passengers that are located in a station
@@ -63,8 +64,11 @@ fn board(state: &mut state::State, data: &state::Data, t: types::Time) -> bool {
     }
 }
 
-fn switch_train_start(state: &mut state::State, data: &state::Data, t: types::Time) -> bool {
+fn switch_train_start(tt: &mut Timetable, t: types::Time) -> bool {
+    // TODO
     false
 }
 
-fn depart(state: &mut state::State, data: &state::Data, t: types::Time) -> () {}
+fn depart(tt: &mut Timetable, t: types::Time) -> () {
+    // TODO
+}
