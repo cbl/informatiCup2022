@@ -3,6 +3,7 @@ pub mod connection;
 pub mod cost;
 pub mod entities;
 pub mod passenger;
+pub mod solution;
 pub mod state;
 pub mod station;
 pub mod timetable;

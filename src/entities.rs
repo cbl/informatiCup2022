@@ -1,15 +1,13 @@
 use crate::connection::Connections;
-use crate::passenger::{
-    ArrivalTime as PArrivalTime, Location as PLocation, LocationId as PLocationId,
-    LocationType as PLocationType, Passenger,
-};
-use crate::state::{State, States};
+use crate::passenger::{ArrivalTime as PArrivalTime, Location as PLocation, Passenger};
+use crate::solution::Solution;
+use crate::state::State;
 use crate::station::Station;
-use crate::train::{
-    Location as TLocation, LocationType as TLocationType, StartStationId as TStartStationId, Train,
-};
+use crate::train::Train;
 use crate::types::Time;
 
+/// The entities struct holds all existing entities and the corresponding meta
+/// data. This includes a list of stations, connections, trains and passengers.
 pub struct Entities {
     pub stations: Vec<Station>,
     pub connections: Connections,
@@ -18,7 +16,8 @@ pub struct Entities {
 }
 
 impl Entities {
-    pub fn latest_passenger(&self) -> PArrivalTime {
+    /// Gets the latest arrival time of all passengers.
+    pub fn latest_arrival(&self) -> PArrivalTime {
         let mut t = 0;
 
         for p in &self.passengers {
@@ -30,8 +29,9 @@ impl Entities {
         return t;
     }
 
-    pub fn init_states(&self) -> States {
-        let latest_arrival: Time = self.latest_passenger();
+    /// Gets the initial solution from the all entities.
+    pub fn init_solution(&self) -> Solution {
+        let latest_arrival: Time = self.latest_arrival();
 
         let s_capacity = self.stations.iter().map(|s| s.capacity).collect();
         let t_capacity = self.trains.iter().map(|t| t.capacity).collect();
@@ -39,35 +39,25 @@ impl Entities {
         let t_location = self
             .trains
             .iter()
-            .map(|train| match train.start {
-                TStartStationId::Nothing => TLocation {
-                    typ: TLocationType::Nothing,
-                    id: train.start,
-                },
-                _ => TLocation {
-                    typ: TLocationType::Station,
-                    id: train.start,
-                },
-            })
+            .map(|train| train.start.to_location())
             .collect();
 
         let p_location = self
             .passengers
             .iter()
-            .map(|passenger| PLocation {
-                typ: PLocationType::Station,
-                id: PLocationId::AnI32(passenger.start),
-            })
+            .map(|passenger| PLocation::Station(passenger.start))
             .collect();
 
-        (0..latest_arrival)
-            .into_iter()
-            .map(|t: Time| State {
-                s_capacity,
-                t_capacity,
-                t_location,
-                p_location,
-            })
-            .collect()
+        Solution(
+            (0..latest_arrival)
+                .into_iter()
+                .map(|t: Time| State {
+                    s_capacity,
+                    t_capacity,
+                    t_location,
+                    p_location,
+                })
+                .collect(),
+        )
     }
 }

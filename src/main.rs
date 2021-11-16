@@ -65,7 +65,7 @@ fn main() {
 
     let timetable = timetable::Timetable {
         entities,
-        states: entities.init_states(),
+        solution: entities.init_solution(),
     };
 
     println!("{}", timetable.to_string());

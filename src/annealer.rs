@@ -1,5 +1,5 @@
 use crate::cost::cost;
-use crate::state::States;
+use crate::solution::Solution;
 use crate::timetable::Timetable;
 use crate::transition::transition;
 use rand::Rng;
@@ -41,8 +41,8 @@ impl Annealer {
         // exponent for energy function
         //let mut exponent: f64 = 0.0;
 
-        // Initial neighbor
-        let mut neighbor: States;
+        // neighbor
+        let mut neighbor: Solution;
 
         current_value = cost(&mut timetable);
 
@@ -51,7 +51,7 @@ impl Annealer {
             start_value = current_value;
 
             for j in 1..STEPS_PER_TEMP {
-                neighbor = timetable.states.clone();
+                neighbor = timetable.solution.clone();
 
                 transition(&mut timetable);
 
@@ -68,7 +68,7 @@ impl Annealer {
                     current_value = current_value + delta;
                 } else {
                     // Reject
-                    timetable.states = neighbor;
+                    timetable.solution = neighbor;
                 }
             }
         }
