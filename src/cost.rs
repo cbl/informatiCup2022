@@ -1,5 +1,9 @@
-use crate::state;
+use crate::timetable::Timetable;
 
-pub fn cost(state: &state::State, data: &state::Data) -> f64 {
-    return state.passenger_delay();
+pub fn cost(tt: &Timetable) -> f64 {
+    let mut cost = 0.0;
+
+    // TODO:
+
+    cost
 }

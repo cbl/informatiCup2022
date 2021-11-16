@@ -30,26 +30,3 @@ pub enum LocationType {
     Train,
     Arrived,
 }
-
-#[derive(Clone)]
-pub struct Journey {
-    pub locations: Vec<Location>,
-}
-
-impl Journey {
-    pub fn at(&self, t: types::Time) -> Location {
-        return self.locations[t];
-    }
-}
-
-impl FromIterator<Location> for Journey {
-    fn from_iter<I: IntoIterator<Item = Location>>(iter: I) -> Self {
-        let mut locations: Vec<Location> = vec![];
-
-        for l in iter {
-            locations.push(l);
-        }
-
-        Journey { locations }
-    }
-}

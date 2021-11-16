@@ -1,13 +1,16 @@
 use crate::{connection, passenger, station, train, types};
+use crate::types::Capacity;
+use crate::train::Location as TLocation;
+use crate::passenger::Location as PLocation;
 
 pub type States = Vec<State>;
 
 #[derive(Clone)]
 pub struct State {
-    pub s_capacity: Vec<station::Capacity>,
-    pub t_capacity: Vec<train::Capacity>,
-    pub t_location: Vec<train::Location>,
-    pub p_location: Vec<passenger::Location>,
+    pub s_capacity: Vec<Capacity>,
+    pub t_capacity: Vec<Capacity>,
+    pub t_location: Vec<TLocation>,
+    pub p_location: Vec<PLocation>,
 }
 
 impl State {
