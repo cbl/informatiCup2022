@@ -39,6 +39,7 @@ impl Location {
     }
 }
 
+#[derive(Clone)]
 pub struct Passenger {
     pub name: &'static str,
     pub start: SId,

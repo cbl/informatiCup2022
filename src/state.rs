@@ -1,5 +1,7 @@
+use crate::connection::Id as CId;
 use crate::passenger::Location as PLocation;
-use crate::train::Location as TLocation;
+use crate::station::Id as SId;
+use crate::train::{Id as TId, Location as TLocation};
 use crate::types::Capacity;
 
 #[derive(Clone)]
@@ -12,4 +14,28 @@ pub struct State {
 
 impl State {
     //
+}
+
+#[derive(PartialEq)]
+pub enum Start {
+    Station(SId),
+    Nothing,
+}
+
+#[derive(PartialEq)]
+pub enum Boarding {
+    Train(TId),
+    Nothing,
+}
+
+#[derive(PartialEq)]
+pub enum Departure {
+    Connection(CId),
+    Nothing,
+}
+
+#[derive(PartialEq)]
+pub enum Detrain {
+    Ok,
+    Nothing,
 }

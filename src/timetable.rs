@@ -2,14 +2,16 @@ use crate::connection::Id as CId;
 use crate::entities::Entities;
 use crate::passenger::{Id as PId, Location as PLocation};
 use crate::solution::Solution;
+use crate::state::State;
 use crate::station::Id as SId;
-use crate::train::{Id as TId, Location as TLocation};
+use crate::train::{Id as TId, Location as TLocation, Train};
 use crate::types::Time;
+use rand::Rng;
 use std::fmt;
 
 pub struct Timetable {
-    pub solution: Solution,
     pub entities: Entities,
+    pub solution: Solution,
 }
 
 impl Timetable {
@@ -18,6 +20,22 @@ impl Timetable {
     // train or station is < 0 - the cust function must weight this
     // maybe in the future: it could be needed to filter legal moves before they
     // are made
+
+    pub fn transition(&mut self) -> () {
+        let mut rnd = rand::thread_rng();
+        let decision = rnd.gen_range(0..4);
+        let t: Time = rnd.gen_range(0..self.solution.0.len());
+
+        if decision == 0 && !self.detrain_random(t) {
+            self.depart_random(t);
+        } else if decision == 1 && !self.board_random(t) {
+            self.depart_random(t);
+        } else if decision == 2 && !self.switch_random_train_start(t) {
+            self.depart_random(t);
+        } else {
+            self.depart_random(t);
+        }
+    }
 
     pub fn board(&mut self, p_id: PId, t_id: TId, t: Time) -> () {
         for i in t + 1..self.solution.0.len() {
@@ -69,10 +87,101 @@ impl Timetable {
         let size = self.entities.passengers[p_id].size;
         // Todo
     }
+
+    pub fn detrain_random(&mut self, t: Time) -> bool {
+        false
+    }
+
+    pub fn board_random(&mut self, t: Time) -> bool {
+        let mut rnd = rand::thread_rng();
+
+        // filter train locations for trains that are located in a station
+        let t_locations = self.solution.0[t]
+            .t_location
+            .clone()
+            .into_iter()
+            .filter(|&l| l.is_station());
+
+        // filter passengers locations for passengers that are located in a station
+        // where also the station has a train with enough capacity
+        let p_locations: Vec<PLocation> = self.solution.0[t]
+            .p_location
+            .clone()
+            .into_iter()
+            .filter(|l| l.is_station())
+            .filter(|pl| {
+                t_locations
+                    .clone()
+                    .any(|tl| tl.matches_passenger_station(&pl))
+            })
+            .collect::<Vec<PLocation>>();
+
+        // return false when no passenger where found that is on a station with
+        // an available train.
+        if p_locations.len() == 0 {
+            return false;
+        }
+
+        // choosing a random passanger
+        let p_id: PId = rnd.gen_range(0..p_locations.len());
+
+        // find the first train that is on the same station
+        let train = t_locations
+            .filter(|&tl| tl.matches_passenger_station(&p_locations[p_id]))
+            .enumerate()
+            .next();
+
+        match train {
+            None => false,
+            Some((t_id, _)) => {
+                self.board(p_id, t_id, t);
+                true
+            }
+        }
+    }
+
+    pub fn depart_random(&mut self, t: Time) -> bool {
+        false
+    }
+
+    pub fn switch_random_train_start(&mut self, t: Time) -> bool {
+        false
+    }
 }
 
 impl fmt::Display for Timetable {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "TODO")
+        // add train journeys
+        self.entities
+            .trains
+            .iter()
+            .enumerate()
+            .for_each(|(t_id, train)| {
+                writeln!(f, "[Train:{}]", train.name);
+                self.solution.0.iter().enumerate().for_each(|(t, s)| {
+                    if self.solution.t_start_at(t_id, t) {
+                    } else if self.solution.departs_at(t_id, t) {
+                        writeln!(f, "{} Depart", t);
+                    }
+                });
+            });
+
+        // add passenger journeys
+        self.entities
+            .passengers
+            .iter()
+            .enumerate()
+            .for_each(|(p_id, passenger)| {
+                writeln!(f, "[Passenger:{}]", passenger.name);
+                self.solution.0.iter().enumerate().for_each(|(t, s)| {
+                    if self.solution.boards_at(p_id, t) {
+                        writeln!(f, "{} Board", t);
+                    } else if self.solution.detrains_at(p_id, t) {
+                        writeln!(f, "{} Detrain", t);
+                    }
+                });
+            });
+
+        Ok(())
     }
 }

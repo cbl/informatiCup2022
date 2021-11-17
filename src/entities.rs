@@ -3,11 +3,12 @@ use crate::passenger::{ArrivalTime as PArrivalTime, Location as PLocation, Passe
 use crate::solution::Solution;
 use crate::state::State;
 use crate::station::Station;
-use crate::train::Train;
-use crate::types::Time;
+use crate::train::{Location as TLocation, Train};
+use crate::types::{Capacity, Time};
 
 /// The entities struct holds all existing entities and the corresponding meta
 /// data. This includes a list of stations, connections, trains and passengers.
+#[derive(Clone)]
 pub struct Entities {
     pub stations: Vec<Station>,
     pub connections: Connections,
@@ -33,31 +34,44 @@ impl Entities {
     pub fn init_solution(&self) -> Solution {
         let latest_arrival: Time = self.latest_arrival();
 
-        let s_capacity = self.stations.iter().map(|s| s.capacity).collect();
-        let t_capacity = self.trains.iter().map(|t| t.capacity).collect();
+        let s_capacity: Vec<Capacity> = self
+            .stations
+            .clone()
+            .into_iter()
+            .map(|station| station.capacity)
+            .collect::<Vec<Capacity>>();
+
+        let t_capacity = self
+            .trains
+            .clone()
+            .into_iter()
+            .map(|train| train.capacity)
+            .collect::<Vec<Capacity>>();
 
         let t_location = self
             .trains
-            .iter()
+            .clone()
+            .into_iter()
             .map(|train| train.start.to_location())
-            .collect();
+            .collect::<Vec<TLocation>>();
 
         let p_location = self
             .passengers
-            .iter()
+            .clone()
+            .into_iter()
             .map(|passenger| PLocation::Station(passenger.start))
-            .collect();
+            .collect::<Vec<PLocation>>();
 
         Solution(
             (0..latest_arrival)
                 .into_iter()
                 .map(|t: Time| State {
-                    s_capacity,
-                    t_capacity,
-                    t_location,
-                    p_location,
+                    s_capacity: s_capacity.clone(),
+                    t_capacity: t_capacity.clone(),
+                    t_location: t_location.clone(),
+                    p_location: p_location.clone(),
                 })
-                .collect(),
+                .collect::<Vec<State>>(),
         )
     }
 }

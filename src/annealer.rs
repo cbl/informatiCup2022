@@ -1,7 +1,6 @@
 use crate::cost::cost;
 use crate::solution::Solution;
 use crate::timetable::Timetable;
-use crate::transition::transition;
 use rand::Rng;
 use std::f64::consts::E;
 
@@ -20,20 +19,20 @@ const STEPS_PER_TEMP: i32 = 100;
 pub struct Annealer {}
 
 impl Annealer {
-    pub fn anneal(&mut self, timetable: &mut Timetable) {
+    pub fn anneal(&self, tt: &mut Timetable) {
         let mut rng = rand::thread_rng();
 
         // the current system temperature
         let mut temperature: f64 = INITIAL_TEMPERATURE;
 
         // value of current state
-        let mut current_value: f64 = 0.0;
+        let mut current_cost: f64 = 0.0;
 
         // value at start of loop
-        let mut start_value: f64 = 0.0;
+        let mut start_cost: f64 = 0.0;
 
         // value after swap
-        let mut delta: f64 = 0.0;
+        let mut new_cost: f64 = 0.0;
 
         // hold wap accept conditions
         let (mut merit, mut flip): (f64, f64) = (0.0, 0.0);
@@ -44,31 +43,31 @@ impl Annealer {
         // neighbor
         let mut neighbor: Solution;
 
-        current_value = cost(&mut timetable);
+        current_cost = cost(&tt);
 
         for i in 1..COOLING_STEPS {
             temperature *= COOLING_FRACTION;
-            start_value = current_value;
+            start_cost = current_cost;
 
             for j in 1..STEPS_PER_TEMP {
-                neighbor = timetable.solution.clone();
+                neighbor = tt.solution.clone();
 
-                transition(&mut timetable);
+                tt.transition();
 
                 flip = rng.gen_range(0.0..1.0);
-                delta = cost(&timetable);
+                new_cost = cost(&tt);
                 // -(current_value - delta) / (BOLTZMANN_CONSTANT * temperature)
-                merit = E.powf((-delta / current_value) / (BOLTZMANN_CONSTANT * temperature));
+                merit = E.powf((current_cost - new_cost) / (BOLTZMANN_CONSTANT * temperature));
 
-                if delta < 0.0 {
+                if new_cost < 0.0 {
                     // Accept win
-                    current_value = current_value + delta;
+                    current_cost = new_cost;
                 } else if merit > flip {
                     // Accept loss
-                    current_value = current_value + delta;
+                    current_cost = new_cost;
                 } else {
                     // Reject
-                    timetable.solution = neighbor;
+                    tt.solution = neighbor;
                 }
             }
         }
