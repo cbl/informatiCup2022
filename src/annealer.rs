@@ -16,7 +16,9 @@ const INITIAL_TEMPERATURE: f64 = 1.0;
 // Number of steps between temperature change - Typically 100 to 1000
 const STEPS_PER_TEMP: i32 = 100;
 
-pub struct Annealer {}
+pub struct Annealer {
+    //
+}
 
 impl Annealer {
     pub fn anneal(&self, tt: &mut Timetable) {
@@ -57,7 +59,7 @@ impl Annealer {
                 flip = rng.gen_range(0.0..1.0);
                 new_cost = cost(&tt);
                 // -(current_value - delta) / (BOLTZMANN_CONSTANT * temperature)
-                merit = E.powf((current_cost - new_cost) / (BOLTZMANN_CONSTANT * temperature));
+                merit = E.powf(-(current_cost - new_cost) / (BOLTZMANN_CONSTANT * temperature));
 
                 if new_cost < 0.0 {
                     // Accept win

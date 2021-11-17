@@ -6,7 +6,6 @@ pub type Capacity = types::Capacity;
 
 #[derive(Clone)]
 pub struct Station {
-    // id: Id,
     pub name: &'static str,
     pub capacity: Capacity,
 }

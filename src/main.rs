@@ -1,4 +1,4 @@
-use rstrain::{annealer, connection, entities, passenger, state, station, timetable, train};
+use rstrain::{annealer, connection, entities, passenger, station, timetable, train};
 
 fn main() {
     let s1 = station::Station {
@@ -11,7 +11,18 @@ fn main() {
     };
     let stations: Vec<station::Station> = vec![s1, s2];
 
-    let connections: connection::Connections = vec![vec![0, 3], vec![3, 0]].to_owned();
+    let d1 = connection::Connection {
+        name: "L1",
+        distance: 1,
+        capacity: 3,
+    };
+
+    let s1_id: usize = 0;
+    let s2_id: usize = 1;
+
+    let mut connections: connection::Connections = connection::Connections::new();
+    connections.insert((s1_id, s2_id), d1);
+    connections.insert((s2_id, s1_id), d1);
 
     let t1 = train::Train {
         name: "T1",
@@ -54,7 +65,7 @@ fn main() {
         size: 1,
         arrival: 4,
     };
-    let passengers = vec![p1];
+    let passengers = vec![p1, p2, p3];
 
     let entities: entities::Entities = entities::Entities {
         stations,
@@ -63,7 +74,7 @@ fn main() {
         passengers,
     };
 
-    let mut timetable = timetable::Timetable {
+    let mut _timetable = timetable::Timetable {
         entities: entities.clone(),
         solution: entities.init_solution(),
     };
@@ -71,5 +82,5 @@ fn main() {
     // let annealer = annealer::Annealer {};
     // annealer.anneal(&mut timetable);
 
-    println!("{}", timetable.to_string());
+    println!("{}", _timetable.to_string());
 }

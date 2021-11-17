@@ -2,7 +2,7 @@ use crate::connection::Id as CId;
 use crate::entities::Entities;
 use crate::passenger::{Id as PId, Location as PLocation};
 use crate::solution::Solution;
-use crate::state::State;
+use crate::state::{Boarding, Departure, Detrain, Start, State};
 use crate::station::Id as SId;
 use crate::train::{Id as TId, Location as TLocation, Train};
 use crate::types::Time;
@@ -159,11 +159,17 @@ impl fmt::Display for Timetable {
             .for_each(|(t_id, train)| {
                 writeln!(f, "[Train:{}]", train.name);
                 self.solution.0.iter().enumerate().for_each(|(t, s)| {
-                    if self.solution.t_start_at(t_id, t) {
-                    } else if self.solution.departs_at(t_id, t) {
-                        writeln!(f, "{} Depart", t);
+                    if let Start::Station(s_id) = self.solution.t_start_at(t_id, t) {
+                        writeln!(f, "{} Start {}", t, self.entities.stations[s_id].name);
+                    }
+
+                    if let Departure::Connection(c_id) = self.solution.departure_at(t_id, t) {
+                        if let Option::Some(connection) = self.entities.connections.get(&c_id) {
+                            writeln!(f, "{} Depart {}", t, connection.name);
+                        }
                     }
                 });
+                writeln!(f, "");
             });
 
         // add passenger journeys
@@ -174,12 +180,13 @@ impl fmt::Display for Timetable {
             .for_each(|(p_id, passenger)| {
                 writeln!(f, "[Passenger:{}]", passenger.name);
                 self.solution.0.iter().enumerate().for_each(|(t, s)| {
-                    if self.solution.boards_at(p_id, t) {
-                        writeln!(f, "{} Board", t);
-                    } else if self.solution.detrains_at(p_id, t) {
+                    if let Boarding::Train(t_id) = self.solution.boarding_at(p_id, t) {
+                        writeln!(f, "{} Board {}", t, self.entities.trains[t_id].name);
+                    } else if self.solution.detrain_at(p_id, t) == Detrain::Ok {
                         writeln!(f, "{} Detrain", t);
                     }
                 });
+                writeln!(f, "");
             });
 
         Ok(())
