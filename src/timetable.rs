@@ -9,6 +9,9 @@ use crate::types::Time;
 use rand::Rng;
 use std::fmt;
 
+/// A timetable holds information about all existing entities - stations,
+/// connections, trains and passengers - and the solution which stores the state
+/// of each entity at any given point in time.
 pub struct Timetable {
     pub entities: Entities,
     pub solution: Solution,
@@ -88,10 +91,20 @@ impl Timetable {
         // Todo
     }
 
+    /// Detrain a random passenger.
+    ///
+    /// Returns false when no passenger is on a train that is on a station that
+    /// has capacity left.
     pub fn detrain_random(&mut self, t: Time) -> bool {
         false
     }
 
+    /// Board a random passenger to the a train.
+    ///
+    /// A random passenger will be boarded that is on a station with a train
+    /// that has capacity left for the passenger.
+    ///
+    /// Returns false when no passenger can be boarded.
     pub fn board_random(&mut self, t: Time) -> bool {
         let mut rnd = rand::thread_rng();
 

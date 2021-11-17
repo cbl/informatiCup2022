@@ -17,7 +17,8 @@ const INITIAL_TEMPERATURE: f64 = 1.0;
 const STEPS_PER_TEMP: i32 = 100;
 
 pub struct Annealer {
-    //
+    // The duration in ms
+    duration: i32,
 }
 
 impl Annealer {

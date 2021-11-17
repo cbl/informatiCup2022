@@ -3,6 +3,8 @@ use crate::state::{Boarding, Departure, Detrain, Start, State};
 use crate::train::{Id as TId, Location as TLocation};
 use crate::types::Time;
 
+/// The soltion holds a list of states for all entities at any given point in
+/// time.
 #[derive(Clone)]
 pub struct Solution(pub Vec<State>);
 

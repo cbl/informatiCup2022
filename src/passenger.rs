@@ -13,10 +13,10 @@ pub enum Location {
     Arrived,
     Train(TId),
     Station(SId),
-    Nothing,
 }
 
 impl Location {
+    /// Determines whether the passenger location is a station.
     pub fn is_station(&self) -> bool {
         match self {
             Location::Station(_) => true,
@@ -24,6 +24,7 @@ impl Location {
         }
     }
 
+    /// Determines whether the passenger location is a train.
     pub fn is_train(&self) -> bool {
         match self {
             Location::Train(_) => true,
@@ -31,9 +32,10 @@ impl Location {
         }
     }
 
-    pub fn is_nothing(&self) -> bool {
+    /// Determines whether the passenger location is arrived.
+    pub fn is_arrived(&self) -> bool {
         match self {
-            Location::Nothing => true,
+            Location::Arrived => true,
             _ => false,
         }
     }
