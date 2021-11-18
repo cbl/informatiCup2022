@@ -3,7 +3,7 @@ use crate::connection::Name as CName;
 use crate::passenger::Location as PLocation;
 use crate::station::Id as SId;
 use crate::train::{Id as TId, Location as TLocation};
-use crate::types::Capacity;
+use crate::types::{Capacity, Time};
 use std::collections::HashMap;
 
 #[derive(Clone)]
@@ -27,7 +27,7 @@ pub enum Start {
 
 #[derive(PartialEq)]
 pub enum Boarding {
-    Train(TId),
+    Some((SId, TId)),
     Nothing,
 }
 

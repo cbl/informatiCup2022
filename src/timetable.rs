@@ -53,9 +53,9 @@ impl Timetable {
     }
 
     pub fn board(&mut self, p_id: PId, t_id: TId, t: Time) -> () {
-        for i in t + 1..self.solution.0.len() {
+        for i in t..self.solution.0.len() {
             // increase capacity of the previous location of the passenger
-            self.increase_p_location_capacity(p_id, i);
+            self.increase_passenger_location_capacity(p_id, i);
 
             // Update passenger location
             self.solution.0[i].p_location[p_id] = PLocation::Train(t_id);
@@ -68,18 +68,19 @@ impl Timetable {
     pub fn detrain(&mut self, p_id: PId, t_id: TId, s_id: SId, t: Time) -> () {
         for i in t..self.solution.0.len() {
             // increase capacity of the previous location of the passenger
-            self.increase_p_location_capacity(p_id, i);
+            self.increase_passenger_location_capacity(p_id, i);
 
             // update passenger location
-            self.solution.0[i].p_location[p_id] = match self.entities.passengers[p_id].start == s_id
-            {
-                true => PLocation::Arrived,
-                false => {
-                    // decrease the capacity of the station when the passenger has not arrived yet.
-                    self.solution.0[i].s_capacity[s_id] -= self.entities.passengers[p_id].size;
-                    PLocation::Station(s_id)
-                }
-            };
+
+            self.solution.0[i].p_location[p_id] =
+                match self.entities.passengers[p_id].destination == s_id {
+                    true => PLocation::Arrived,
+                    false => {
+                        // decrease the capacity of the station when the passenger has not arrived yet.
+                        self.solution.0[i].s_capacity[s_id] -= self.entities.passengers[p_id].size;
+                        PLocation::Station(s_id)
+                    }
+                };
 
             // TODO: is it needed to increase the capacity of the station after
             // the passenger has arrived?
@@ -87,49 +88,58 @@ impl Timetable {
     }
 
     pub fn depart(&mut self, t_id: TId, c_id: CId, t: Time) -> bool {
-        self.solution.0[t + 1].t_location[t_id] = TLocation::Connection(c_id);
+        if self.entities.connections.contains_key(&c_id) {
+            self.undo_train_journey(t_id, t);
+        }
 
-        match self.entities.connections.get(&c_id) {
-            None => false,
-            Some(connection) => {
-                for i in t..self.solution.0.len() {
-                    // increase capacities of train locations that are
-                    // overridden by the new connection and the destination
-                    match self.solution.0[t].t_location[t_id] {
-                        TLocation::Connection(prev_c_id) => {
-                            if let Some(connection) = self.entities.connections.get(&prev_c_id) {
-                                *self.solution.0[t]
-                                    .c_capacity
-                                    .get_mut(connection.name)
-                                    .unwrap() += 1;
-                            }
-                        }
-                        TLocation::Station(s_id) => {
-                            self.solution.0[t].s_capacity[s_id] += 1;
-                        }
-                        _ => {}
-                    };
+        if let Some(connection) = self.entities.connections.get(&c_id) {
+            for i in t..self.solution.0.len() {
+                // Zeiteinheiten * Geschwindigkeit >= Streckenlänge
+                // https://github.com/informatiCup/informatiCup2022/issues/7
+                if ((i - t) as f64 * self.entities.trains[t_id].speed) >= connection.distance {
+                    // update train location to the destination
+                    self.solution.0[i].t_location[t_id] = TLocation::Station(c_id.1);
+                    // decrease station capacity
+                    self.solution.0[i].s_capacity[c_id.1] -= 1;
+                } else {
+                    // update train location to the new connection
+                    self.solution.0[i].t_location[t_id] = TLocation::Connection(c_id);
+                    // decrease connection capacity
+                    *self.solution.0[i]
+                        .c_capacity
+                        .get_mut(connection.name)
+                        .unwrap() -= 1;
+                }
+            }
 
-                    // Zeiteinheiten * Geschwindigkeit >= Streckenlänge
-                    // https://github.com/informatiCup/informatiCup2022/issues/7
-                    if ((i - t) as f64 * self.entities.trains[t_id].speed) >= connection.distance {
-                        // update train location to the destination
-                        self.solution.0[i].t_location[t_id] = TLocation::Station(c_id.1);
-                        // decrease station capacity
-                        self.solution.0[i].s_capacity[c_id.1] -= 1;
-                    } else {
-                        // update train location to the new connection
-                        self.solution.0[i].t_location[t_id] = TLocation::Connection(c_id);
-                        // decrease connection capacity
-                        *self.solution.0[i]
-                            .c_capacity
-                            .get_mut(connection.name)
-                            .unwrap() -= 1;
+            return true;
+        }
+
+        false
+    }
+
+    fn undo_passenger_journey(&mut self, p_id: PId, location: PLocation, t: Time) {
+        for i in t..self.solution.0.len() {
+            self.increase_passenger_location_capacity(p_id, i);
+            self.solution.0[t].p_location[p_id] = location;
+            self.decrease_passenger_location_capacity(p_id, i);
+        }
+    }
+
+    fn undo_train_journey(&mut self, t_id: TId, t: Time) {
+        for i in t..self.solution.0.len() {
+            // unboard all passengers
+
+            (0..self.solution.0[i].p_location.len()).for_each(|p_id| {
+                if let Boarding::Some(boarding) = self.solution.boarding_at(p_id, t) {
+                    if boarding.1 == t_id {
+                        self.undo_passenger_journey(p_id, PLocation::Station(boarding.0), i);
                     }
                 }
+            });
 
-                true
-            }
+            // increase capacity of previous train location
+            self.increase_train_location_capacity(t_id, i);
         }
     }
 
@@ -138,6 +148,9 @@ impl Timetable {
     /// Returns false when no passenger is on a train that is on a station that
     /// has capacity left.
     pub fn detrain_random(&mut self, t: Time) -> bool {
+        if t == 2 {
+            return false;
+        }
         // get iteration containing trains that are located at a station
         let trains_iterator = self.solution.0[t]
             .t_location
@@ -155,6 +168,21 @@ impl Timetable {
                 trains_iterator
                     .clone()
                     .any(|(t_id, _)| l.matches_train(t_id))
+            })
+            .filter(|(p_id, l)| match l {
+                PLocation::Train(t_id) => {
+                    for i in 1..t {
+                        if let Boarding::Some(boarding) = self.solution.boarding_at(*p_id, t - i) {
+                            return match self.solution.0[t].t_location[*t_id] {
+                                TLocation::Station(s_id) => boarding.0 != s_id,
+                                _ => false,
+                            };
+                        }
+                    }
+
+                    false
+                }
+                _ => false,
             })
             .collect::<Vec<(PId, PLocation)>>();
 
@@ -182,6 +210,10 @@ impl Timetable {
     ///
     /// Returns false when no passenger can be boarded.
     pub fn board_random(&mut self, t: Time) -> bool {
+        if t == 0 {
+            return false;
+        }
+
         // filter train locations for trains that are located in a station
         let trains_iterator = self.solution.0[t]
             .t_location
@@ -227,6 +259,10 @@ impl Timetable {
     }
 
     pub fn depart_random(&mut self, t: Time) -> bool {
+        if t == self.solution.0.len() - 1 || t == 0 {
+            return false;
+        }
+
         // get iteration containing trains that are located at a station
         let trains_iterator = self.solution.0[t]
             .t_location
@@ -234,6 +270,7 @@ impl Timetable {
             .into_iter()
             .enumerate()
             .filter(|(_, l)| l.is_station());
+        // .filter(|(t_id, _)| self.solution.0[t + 1].t_location[*t_id].is_station());
 
         // find a random connection that match the location of any train in a station
         // and has capacity greater that 0.
@@ -252,6 +289,10 @@ impl Timetable {
             })
             .collect::<Vec<(usize, (CId, Connection))>>();
 
+        // for (t_id, _) in trains_iterator.clone() {
+        //     println!("can depart {}", t_id);
+        // }
+
         if let Some((_, (c_id, c))) = connections.choose(&mut self.rnd) {
             // find a random train that is on the same station
             let trains = trains_iterator
@@ -262,7 +303,7 @@ impl Timetable {
                 .collect::<Vec<(TId, TLocation)>>();
 
             if let Some((t_id, _)) = trains.choose(&mut self.rnd) {
-                self.depart(*t_id, *c_id, t);
+                self.depart(*t_id, *c_id, t + 1);
                 return true;
             }
         }
@@ -272,6 +313,16 @@ impl Timetable {
 
     pub fn switch_random_train_start(&mut self, t: Time) -> bool {
         false
+    }
+
+    pub fn previous_train_station(&self, t_id: TId, t: Time) -> Option<SId> {
+        for i in (1..t) {
+            if let TLocation::Station(s_id) = self.solution.0[t - i].t_location[t_id] {
+                return Some(s_id);
+            }
+        }
+
+        None
     }
 
     /// Gets an iterator that filteret all trains that are located in a station.
@@ -284,7 +335,7 @@ impl Timetable {
             .filter(|(_, l)| l.is_station())
     }
 
-    fn increase_p_location_capacity(&mut self, p_id: PId, t: Time) {
+    fn increase_passenger_location_capacity(&mut self, p_id: PId, t: Time) {
         match self.solution.0[t].p_location[p_id] {
             PLocation::Train(t_id) => {
                 self.solution.0[t].t_capacity[t_id] += self.entities.passengers[p_id].size
@@ -296,7 +347,19 @@ impl Timetable {
         };
     }
 
-    fn increase_t_location_capacity(&mut self, t_id: TId, t: Time) {
+    fn decrease_passenger_location_capacity(&mut self, p_id: PId, t: Time) {
+        match self.solution.0[t].p_location[p_id] {
+            PLocation::Train(t_id) => {
+                self.solution.0[t].t_capacity[t_id] -= self.entities.passengers[p_id].size
+            }
+            PLocation::Station(s_id) => {
+                self.solution.0[t].s_capacity[s_id] -= self.entities.passengers[p_id].size;
+            }
+            _ => {}
+        };
+    }
+
+    fn increase_train_location_capacity(&mut self, t_id: TId, t: Time) {
         match self.solution.0[t].t_location[t_id] {
             TLocation::Connection(prev_c_id) => {
                 if let Some(connection) = self.entities.connections.get(&prev_c_id) {
@@ -324,13 +387,20 @@ impl fmt::Display for Timetable {
             .for_each(|(t_id, train)| {
                 writeln!(f, "[Train:{}]", train.name);
                 self.solution.0.iter().enumerate().for_each(|(t, s)| {
+                    match self.solution.0[t].t_location[t_id] {
+                        TLocation::Station(s_id) => writeln!(f, "{} Station {}", t, s_id),
+                        TLocation::Connection(c_id) => {
+                            writeln!(f, "{} Connection ({}, {})", t, c_id.0, c_id.1)
+                        }
+                        _ => writeln!(f, "{} foo", t),
+                    };
                     if let Start::Station(s_id) = self.solution.t_start_at(t_id, t) {
-                        writeln!(f, "{} Start {}", t, self.entities.stations[s_id].name);
+                        // writeln!(f, "{} Start {}", t, self.entities.stations[s_id].name);
                     }
 
                     if let Departure::Connection(c_id) = self.solution.departure_at(t_id, t) {
                         if let Option::Some(connection) = self.entities.connections.get(&c_id) {
-                            writeln!(f, "{} Depart {}", t, connection.name);
+                            // writeln!(f, "{} Depart {}", t, connection.name);
                         }
                     }
                 });
@@ -345,10 +415,17 @@ impl fmt::Display for Timetable {
             .for_each(|(p_id, passenger)| {
                 writeln!(f, "[Passenger:{}]", passenger.name);
                 self.solution.0.iter().enumerate().for_each(|(t, s)| {
-                    if let Boarding::Train(t_id) = self.solution.boarding_at(p_id, t) {
-                        writeln!(f, "{} Board {}", t, self.entities.trains[t_id].name);
+                    match self.solution.0[t].p_location[p_id] {
+                        PLocation::Station(s_id) => writeln!(f, "{} Station {}", t, s_id),
+                        PLocation::Train(t_id) => {
+                            writeln!(f, "{} Train {}", t, t_id)
+                        }
+                        PLocation::Arrived => writeln!(f, "{} Arrived", t),
+                    };
+                    if let Boarding::Some((_, t_id)) = self.solution.boarding_at(p_id, t) {
+                        // writeln!(f, "{} Board {}", t, self.entities.trains[t_id].name);
                     } else if self.solution.detrain_at(p_id, t) == Detrain::Ok {
-                        writeln!(f, "{} Detrain", t);
+                        // writeln!(f, "{} Detrain", t);
                     }
                 });
                 writeln!(f, "");

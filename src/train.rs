@@ -8,16 +8,16 @@ pub type Speed = f64;
 pub type Capacity = types::Capacity;
 
 #[derive(Clone, PartialEq)]
-pub enum StartStationId {
+pub enum StartStation {
+    Any,
     Station(SId),
-    Nothing,
 }
 
-impl StartStationId {
+impl StartStation {
     pub fn to_location(&self) -> Location {
         match self {
-            StartStationId::Station(s_id) => Location::Station(*s_id),
-            StartStationId::Nothing => Location::Nothing,
+            StartStation::Station(s_id) => Location::Station(*s_id),
+            StartStation::Any => Location::Nothing,
         }
     }
 }
@@ -65,7 +65,7 @@ impl Location {
 #[derive(Clone)]
 pub struct Train {
     pub name: &'static str,
-    pub start: StartStationId,
+    pub start: StartStation,
     pub speed: Speed,
     pub capacity: Capacity,
 }

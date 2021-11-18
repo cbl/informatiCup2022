@@ -53,7 +53,7 @@ impl Solution {
 
         match self.0[t].p_location[p_id] {
             PLocation::Train(t_id) => match self.0[t - 1].p_location[p_id] {
-                PLocation::Station(_) => Boarding::Train(t_id),
+                PLocation::Station(s_id) => Boarding::Some((s_id, t_id)),
                 _ => Boarding::Nothing,
             },
             _ => Boarding::Nothing,
@@ -62,6 +62,30 @@ impl Solution {
 
     /// Gets the detrain of a passenger at the given time.
     pub fn detrain_at(&self, p_id: PId, t: Time) -> Detrain {
-        Detrain::Nothing
+        if t == 0 {
+            return Detrain::Nothing;
+        }
+
+        match self.0[t].p_location[p_id] {
+            PLocation::Train(_) => Detrain::Nothing,
+            _ => match self.0[t - 1].p_location[p_id] {
+                PLocation::Train(_) => Detrain::Ok,
+                _ => Detrain::Nothing,
+            },
+        }
+    }
+
+    pub fn is_train_sleeping(&self, t_id: TId, t: Time) -> bool {
+        if t == 0 {
+            return false;
+        }
+
+        match self.0[t].t_location[t_id] {
+            TLocation::Station(_) => match self.0[t - 1].t_location[t_id] {
+                TLocation::Station(_) => true,
+                _ => false,
+            },
+            _ => false,
+        }
     }
 }
