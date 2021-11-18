@@ -1,12 +1,15 @@
 use crate::connection::Id as CId;
+use crate::connection::Name as CName;
 use crate::passenger::Location as PLocation;
 use crate::station::Id as SId;
 use crate::train::{Id as TId, Location as TLocation};
 use crate::types::Capacity;
+use std::collections::HashMap;
 
 #[derive(Clone)]
 pub struct State {
     pub s_capacity: Vec<Capacity>,
+    pub c_capacity: HashMap<CName, Capacity>,
     pub t_capacity: Vec<Capacity>,
     pub t_location: Vec<TLocation>,
     pub p_location: Vec<PLocation>,

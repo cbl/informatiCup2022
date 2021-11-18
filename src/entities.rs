@@ -1,10 +1,11 @@
-use crate::connection::Connections;
+use crate::connection::{Connections, Name as CName};
 use crate::passenger::{ArrivalTime as PArrivalTime, Location as PLocation, Passenger};
 use crate::solution::Solution;
 use crate::state::State;
 use crate::station::Station;
 use crate::train::{Location as TLocation, Train};
 use crate::types::{Capacity, Time};
+use std::collections::HashMap;
 
 /// The entities struct holds all existing entities and the corresponding meta
 /// data. This includes a list of stations, connections, trains and passengers.
@@ -62,11 +63,19 @@ impl Entities {
             .map(|passenger| PLocation::Station(passenger.start))
             .collect::<Vec<PLocation>>();
 
+        let c_capacity = self
+            .connections
+            .clone()
+            .into_iter()
+            .map(|(_, connection)| (connection.name, connection.capacity))
+            .collect::<HashMap<CName, Capacity>>();
+
         Solution(
-            (0..latest_arrival)
+            (0..latest_arrival + 1)
                 .into_iter()
                 .map(|t: Time| State {
                     s_capacity: s_capacity.clone(),
+                    c_capacity: c_capacity.clone(),
                     t_capacity: t_capacity.clone(),
                     t_location: t_location.clone(),
                     p_location: p_location.clone(),

@@ -13,7 +13,7 @@ fn main() {
 
     let d1 = connection::Connection {
         name: "L1",
-        distance: 1,
+        distance: 1.0,
         capacity: 3,
     };
 
@@ -74,13 +74,15 @@ fn main() {
         passengers,
     };
 
-    let mut _timetable = timetable::Timetable {
-        entities: entities.clone(),
-        solution: entities.init_solution(),
-    };
+    let mut _timetable = timetable::Timetable::new(entities.clone(), entities.init_solution());
 
     // let annealer = annealer::Annealer {};
     // annealer.anneal(&mut timetable);
+
+    _timetable.board(0, 0, 1);
+    _timetable.depart(0, (0, 1), 2);
+
+    _timetable.detrain_random(4);
 
     println!("{}", _timetable.to_string());
 }

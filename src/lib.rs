@@ -8,5 +8,4 @@ pub mod state;
 pub mod station;
 pub mod timetable;
 pub mod train;
-pub mod transition;
 pub mod types;

@@ -1,4 +1,4 @@
-use crate::passenger::Id as PId;
+use crate::passenger::{Id as PId, Location as PLocation};
 use crate::state::{Boarding, Departure, Detrain, Start, State};
 use crate::train::{Id as TId, Location as TLocation};
 use crate::types::Time;
@@ -32,12 +32,32 @@ impl Solution {
 
     /// Gets the departure of a train at the given time.
     pub fn departure_at(&self, t_id: TId, t: Time) -> Departure {
-        Departure::Nothing
+        if t == 0 {
+            return Departure::Nothing;
+        }
+
+        match self.0[t].t_location[t_id] {
+            TLocation::Connection(c_id) => match self.0[t - 1].t_location[t_id] {
+                TLocation::Station(_) => Departure::Connection(c_id),
+                _ => Departure::Nothing,
+            },
+            _ => Departure::Nothing,
+        }
     }
 
     /// Gets the boarding of a passenger at the given time.
     pub fn boarding_at(&self, p_id: PId, t: Time) -> Boarding {
-        Boarding::Nothing
+        if t == 0 {
+            return Boarding::Nothing;
+        }
+
+        match self.0[t].p_location[p_id] {
+            PLocation::Train(t_id) => match self.0[t - 1].p_location[p_id] {
+                PLocation::Station(_) => Boarding::Train(t_id),
+                _ => Boarding::Nothing,
+            },
+            _ => Boarding::Nothing,
+        }
     }
 
     /// Gets the detrain of a passenger at the given time.

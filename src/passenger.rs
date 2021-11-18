@@ -39,6 +39,13 @@ impl Location {
             _ => false,
         }
     }
+
+    pub fn matches_train(&self, t_id: TId) -> bool {
+        match self {
+            Location::Train(id) => *id == t_id,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Clone)]
