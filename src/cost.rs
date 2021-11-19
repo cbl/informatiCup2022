@@ -35,6 +35,9 @@ pub fn cost(tt: &Timetable) -> f64 {
             + (1.0 / (p_t_w + 1.0));
     });
 
+    let entities_per_time = (tt.entities.trains.len() as f64 + tt.entities.passengers.len() as f64)
+        / tt.solution.0.len() as f64;
+
     cost
 }
 
