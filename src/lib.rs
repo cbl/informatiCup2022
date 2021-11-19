@@ -2,6 +2,7 @@ pub mod annealer;
 pub mod connection;
 pub mod cost;
 pub mod entities;
+pub mod parser;
 pub mod passenger;
 pub mod solution;
 pub mod state;

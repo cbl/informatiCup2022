@@ -64,7 +64,7 @@ impl Location {
 
 #[derive(Clone)]
 pub struct Train {
-    pub name: &'static str,
+    pub name: String,
     pub start: StartStation,
     pub speed: Speed,
     pub capacity: Capacity,

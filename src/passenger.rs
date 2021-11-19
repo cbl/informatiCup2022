@@ -40,6 +40,7 @@ impl Location {
         }
     }
 
+    /// Determines whether the passenger location matches the given train id.
     pub fn matches_train(&self, t_id: TId) -> bool {
         match self {
             Location::Train(id) => *id == t_id,
@@ -50,7 +51,7 @@ impl Location {
 
 #[derive(Clone)]
 pub struct Passenger {
-    pub name: &'static str,
+    pub name: String,
     pub start: SId,
     pub destination: SId,
     pub size: GroupSize,

@@ -4,17 +4,17 @@ use crate::timetable::Timetable;
 use rand::Rng;
 use std::f64::consts::E;
 
-const BOLTZMANN_CONSTANT: f64 = 1.0;
-const COOLING_STEPS: i32 = 1000;
+const BOLTZMANN_CONSTANT: f64 = 0.1;
+const COOLING_STEPS: i32 = 100;
 
 // Used for temperature decrement - Typically 0.8 <= a <= 0.99
-const COOLING_FRACTION: f64 = 0.99;
+const COOLING_FRACTION: f64 = 0.95;
 
 // Initial system temperature
 const INITIAL_TEMPERATURE: f64 = 1.0;
 
 // Number of steps between temperature change - Typically 100 to 1000
-const STEPS_PER_TEMP: i32 = 200;
+const STEPS_PER_TEMP: i32 = 100;
 
 pub struct Annealer {
     // The duration in ms
@@ -34,6 +34,7 @@ impl Annealer {
 
         // value at start of loop
         let mut start_cost: f64 = 0.0;
+        let mut best_cost: f64 = f64::INFINITY;
 
         // value after swap
         let mut new_cost: f64 = 0.0;
@@ -47,6 +48,7 @@ impl Annealer {
 
         // neighbor
         let mut neighbor: Solution;
+        let mut best: Solution = tt.solution.clone();
 
         current_cost = cost(&tt);
 
@@ -66,18 +68,23 @@ impl Annealer {
                 exponent = (-delta / current_value) / (BOLTZMANN_CONSTANT * temperature);
                 merit = E.powf(exponent);
 
-                // println!(
-                //     "current_cost: {}, new_cost: {}, current_valule {}, delta {}, merit: {}, flip {}, exponent {}, test {}, p {}",
-                //     current_cost,
-                //     new_cost,
-                //     current_value,
-                //     delta,
-                //     merit,
-                //     flip,
-                //     exponent,
-                //     (-delta / current_value),
-                //     (BOLTZMANN_CONSTANT * temperature)
-                // );
+                println!(
+                    "current_cost: {}, new_cost: {}, current_valule {}, delta {}, merit: {}, flip {}",
+                    current_cost,
+                    new_cost,
+                    current_value,
+                    delta,
+                    merit,
+                    flip
+                    // exponent,
+                    // (-delta / current_value),
+                    // (BOLTZMANN_CONSTANT * temperature)
+                );
+
+                if best_cost > new_cost {
+                    best_cost = new_cost;
+                    best = tt.solution.clone();
+                }
 
                 if delta < 0.0 {
                     // Accept win
@@ -93,5 +100,6 @@ impl Annealer {
                 }
             }
         }
+        tt.solution = best;
     }
 }

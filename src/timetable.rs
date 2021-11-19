@@ -1,17 +1,15 @@
 use crate::connection::{Connection, Id as CId};
 use crate::entities::Entities;
-use crate::passenger::{Id as PId, Location as PLocation};
+use crate::passenger::{Capacity, Id as PId, Location as PLocation};
 use crate::solution::Solution;
-use crate::state::{Boarding, Departure, Detrain, Start, State};
+use crate::state::{Boarding, Departure, Detrain, Start};
 use crate::station::Id as SId;
-use crate::train::{Id as TId, Location as TLocation, Train};
+use crate::train::{Id as TId, Location as TLocation, StartStation, Train};
 use crate::types::Time;
 use rand::prelude::ThreadRng;
 use rand::seq::SliceRandom;
 use rand::Rng;
-use std::collections::HashMap;
 use std::fmt;
-use std::iter::Filter;
 
 /// A timetable holds information about all existing entities - stations,
 /// connections, trains and passengers - and the solution which stores the state
@@ -45,7 +43,7 @@ impl Timetable {
             self.depart_random(t);
         } else if decision == 1 && !self.board_random(t) {
             self.depart_random(t);
-        } else if decision == 2 && !self.switch_random_train_start(t) {
+        } else if decision == 2 && !self.switch_random_train_start() {
             self.depart_random(t);
         } else {
             self.depart_random(t);
@@ -107,7 +105,7 @@ impl Timetable {
                     // decrease connection capacity
                     *self.solution.0[i]
                         .c_capacity
-                        .get_mut(connection.name)
+                        .get_mut(&connection.name)
                         .unwrap() -= 1;
                 }
             }
@@ -230,10 +228,12 @@ impl Timetable {
             .into_iter()
             .enumerate()
             .filter(|(_, l)| l.is_station())
-            .filter(|(_, pl)| {
-                trains_iterator
-                    .clone()
-                    .any(|(_, tl)| tl.matches_passenger_station(&pl))
+            .filter(|(p_id, pl)| {
+                trains_iterator.clone().any(|(t_id, tl)| {
+                    tl.matches_passenger_station(&pl)
+                        && self.solution.0[t].t_capacity[t_id]
+                            >= self.entities.passengers[*p_id].size
+                })
             })
             .collect::<Vec<(PId, PLocation)>>();
 
@@ -280,7 +280,7 @@ impl Timetable {
             .clone()
             .into_iter()
             .enumerate()
-            .filter(|(_, (_, c))| self.solution.0[t].c_capacity[c.name] > 0)
+            .filter(|(_, (_, c))| self.solution.0[t].c_capacity[&c.name] > 0)
             .filter(|(_, ((s1_id, _), _))| {
                 trains_iterator.clone().any(|(_, location)| match location {
                     TLocation::Station(s_id) => s_id == *s1_id,
@@ -311,7 +311,34 @@ impl Timetable {
         false
     }
 
-    pub fn switch_random_train_start(&mut self, t: Time) -> bool {
+    pub fn switch_random_train_start(&mut self) -> bool {
+        let trains = self
+            .entities
+            .trains
+            .clone()
+            .into_iter()
+            .enumerate()
+            .filter(|(_, t)| t.start == StartStation::Any)
+            .collect::<Vec<(TId, Train)>>();
+
+        let stations = self.solution.0[0]
+            .s_capacity
+            .clone()
+            .into_iter()
+            .enumerate();
+        // .filter(|(_, c)| c > 0);
+
+        if let Some((t_id, _)) = trains.choose(&mut self.rnd) {
+            if let Some((s_id, _)) = stations
+                .collect::<Vec<(SId, Capacity)>>()
+                .choose(&mut self.rnd)
+            {
+                self.undo_train_journey(*t_id, 0);
+                (0..self.solution.0.len())
+                    .for_each(|t| self.solution.0[t].t_location[*t_id] = TLocation::Station(*s_id))
+            }
+        }
+
         false
     }
 
@@ -365,7 +392,7 @@ impl Timetable {
                 if let Some(connection) = self.entities.connections.get(&prev_c_id) {
                     *self.solution.0[t]
                         .c_capacity
-                        .get_mut(connection.name)
+                        .get_mut(&connection.name)
                         .unwrap() += 1;
                 }
             }
@@ -387,20 +414,22 @@ impl fmt::Display for Timetable {
             .for_each(|(t_id, train)| {
                 writeln!(f, "[Train:{}]", train.name);
                 self.solution.0.iter().enumerate().for_each(|(t, s)| {
-                    match self.solution.0[t].t_location[t_id] {
-                        TLocation::Station(s_id) => writeln!(f, "{} Station {}", t, s_id),
-                        TLocation::Connection(c_id) => {
-                            writeln!(f, "{} Connection ({}, {})", t, c_id.0, c_id.1)
-                        }
-                        _ => writeln!(f, "{} foo", t),
-                    };
+                    // match self.solution.0[t].t_location[t_id] {
+                    //     TLocation::Station(s_id) => {
+                    //         writeln!(f, "{} Station {}", t, self.entities.stations[s_id].name)
+                    //     }
+                    //     TLocation::Connection(c_id) => {
+                    //         writeln!(f, "{} Connection ({}, {})", t, c_id.0, c_id.1)
+                    //     }
+                    //     _ => writeln!(f, "{} None", t),
+                    // };
                     if let Start::Station(s_id) = self.solution.t_start_at(t_id, t) {
-                        // writeln!(f, "{} Start {}", t, self.entities.stations[s_id].name);
+                        writeln!(f, "{} Start {}", t, self.entities.stations[s_id].name);
                     }
 
                     if let Departure::Connection(c_id) = self.solution.departure_at(t_id, t) {
                         if let Option::Some(connection) = self.entities.connections.get(&c_id) {
-                            // writeln!(f, "{} Depart {}", t, connection.name);
+                            writeln!(f, "{} Depart {}", t, connection.name);
                         }
                     }
                 });
@@ -415,17 +444,17 @@ impl fmt::Display for Timetable {
             .for_each(|(p_id, passenger)| {
                 writeln!(f, "[Passenger:{}]", passenger.name);
                 self.solution.0.iter().enumerate().for_each(|(t, s)| {
-                    match self.solution.0[t].p_location[p_id] {
-                        PLocation::Station(s_id) => writeln!(f, "{} Station {}", t, s_id),
-                        PLocation::Train(t_id) => {
-                            writeln!(f, "{} Train {}", t, t_id)
-                        }
-                        PLocation::Arrived => writeln!(f, "{} Arrived", t),
-                    };
+                    // match self.solution.0[t].p_location[p_id] {
+                    //     PLocation::Station(s_id) => writeln!(f, "{} Station {}", t, s_id),
+                    //     PLocation::Train(t_id) => {
+                    //         writeln!(f, "{} Train {}", t, t_id)
+                    //     }
+                    //     PLocation::Arrived => writeln!(f, "{} Arrived", t),
+                    // };
                     if let Boarding::Some((_, t_id)) = self.solution.boarding_at(p_id, t) {
-                        // writeln!(f, "{} Board {}", t, self.entities.trains[t_id].name);
+                        writeln!(f, "{} Board {}", t, self.entities.trains[t_id].name);
                     } else if self.solution.detrain_at(p_id, t) == Detrain::Ok {
-                        // writeln!(f, "{} Detrain", t);
+                        writeln!(f, "{} Detrain", t);
                     }
                 });
                 writeln!(f, "");
