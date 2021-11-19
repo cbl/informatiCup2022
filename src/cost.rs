@@ -6,6 +6,7 @@ use crate::types::Time;
 
 pub fn cost(tt: &Timetable) -> f64 {
     let mut cost = 0.0;
+    let mut t_len = tt.solution.0.len();
 
     cost += tt.solution.0[0]
         .t_location
@@ -25,20 +26,24 @@ pub fn cost(tt: &Timetable) -> f64 {
 
         let t_s_w = train_s_w_cost(&state, t, |w| w);
         let t_c_w = train_c_w_cost(&state, t, |w| w);
-        let p_s_w = passenger_s_w_cost(&state, t, |w| w);
-        let p_t_w = passenger_t_w_cost(&state, t, |w| w);
+        let p_s_w = passenger_s_w_cost(&state, t, |p_id, w| {
+            w //* (tt.entities.passengers[p_id].arrival / t_len + 1) as f64
+        });
+        let p_t_w = passenger_t_w_cost(&state, t, |p_id, w| {
+            w //* */ (tt.entities.passengers[p_id].arrival / t_len + 1) as f64
+        });
 
         cost += a
             + 1.0 / (t_s_w + 1.0)
             + (1.0 / (t_c_w + 1.0))
             + (1.0 / (p_s_w + 1.0))
-            + (1.0 / (p_t_w + 1.0));
+            + (2.0 / (p_t_w + 1.0));
     });
 
-    let entities_per_time = (tt.entities.trains.len() as f64 + tt.entities.passengers.len() as f64)
-        / tt.solution.0.len() as f64;
+    let time_per_entity = tt.solution.0.len() as f64
+        / (tt.entities.trains.len() as f64 + tt.entities.passengers.len() as f64);
 
-    cost
+    cost / time_per_entity
 }
 
 fn train_s_w_cost<F>(state: &State, t: Time, f: F) -> f64
@@ -67,24 +72,26 @@ where
 
 fn passenger_s_w_cost<F>(state: &State, t: Time, f: F) -> f64
 where
-    F: Fn(f64) -> f64,
+    F: Fn(usize, f64) -> f64,
 {
     state
         .p_location
         .iter()
         .filter(|l| l.is_station())
-        .map(|_| f(t as f64))
+        .enumerate()
+        .map(|(p_id, _)| f(p_id, t as f64))
         .sum()
 }
 fn passenger_t_w_cost<F>(state: &State, t: Time, f: F) -> f64
 where
-    F: Fn(f64) -> f64,
+    F: Fn(usize, f64) -> f64,
 {
     state
         .p_location
         .iter()
         .filter(|l| l.is_train())
-        .map(|_| f(t as f64))
+        .enumerate()
+        .map(|(p_id, _)| f(p_id, t as f64))
         .sum()
 }
 
@@ -110,6 +117,7 @@ pub fn delays(tt: &Timetable) -> i32 {
         .map(|(t, s)| {
             s.p_location
                 .into_iter()
+                .filter(|l| l.is_arrived())
                 .enumerate()
                 .filter(|(p_id, l)| tt.entities.passengers[*p_id].arrival < t)
                 .count() as i32

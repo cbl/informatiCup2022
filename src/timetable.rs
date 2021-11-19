@@ -14,6 +14,7 @@ use std::fmt;
 /// A timetable holds information about all existing entities - stations,
 /// connections, trains and passengers - and the solution which stores the state
 /// of each entity at any given point in time.
+#[derive(Clone)]
 pub struct Timetable {
     pub entities: Entities,
     pub solution: Solution,

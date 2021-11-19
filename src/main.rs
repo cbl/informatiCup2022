@@ -11,11 +11,11 @@ fn main() {
     } else {
         let mut tt = parse(&args[1]);
 
-        let annealer = Annealer {};
-        annealer.anneal(&mut tt);
+        let mut annealer = Annealer::new();
+        annealer.repeated(&mut tt, 3);
+        annealer.plot(&"plots/costs.png".to_owned());
 
         println!("\n{}", tt.to_string());
-
         println!("cost {}", cost(&tt));
         println!("delays {}", delays(&tt));
     }
