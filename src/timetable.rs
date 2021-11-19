@@ -27,6 +27,7 @@ impl Timetable {
     // maybe in the future: it could be needed to filter legal moves before they
     // are made
 
+    /// Create a new Timetable instance.
     pub fn new(entities: Entities, solution: Solution) -> Timetable {
         Timetable {
             entities,
@@ -35,6 +36,18 @@ impl Timetable {
         }
     }
 
+    /// Execute a transition.
+    ///
+    /// A transition performes one of the following moves randomly for a random
+    /// point in time:
+    /// - depart
+    /// - board
+    /// - detrain
+    /// - switch_train_start
+    ///
+    /// Sometimes a move cannot be performed, e.g.: there are no passengers on
+    /// any station that can be boarded to a train. For that case a random train
+    /// is be departed.
     pub fn transition(&mut self) -> () {
         let decision = self.rnd.gen_range(0..4);
         let t: Time = self.rnd.gen_range(0..self.solution.0.len());
@@ -50,6 +63,7 @@ impl Timetable {
         }
     }
 
+    /// Board a passenger to a given train at the given point in time.
     pub fn board(&mut self, p_id: PId, t_id: TId, t: Time) -> () {
         for i in t..self.solution.0.len() {
             // increase capacity of the previous location of the passenger
@@ -63,6 +77,8 @@ impl Timetable {
         }
     }
 
+    /// Detrain a passenger from a given train to a station at the given point
+    /// in time.
     pub fn detrain(&mut self, p_id: PId, t_id: TId, s_id: SId, t: Time) -> () {
         for i in t..self.solution.0.len() {
             // increase capacity of the previous location of the passenger
@@ -85,6 +101,7 @@ impl Timetable {
         }
     }
 
+    /// Depart a train from a station at the given point in time.
     pub fn depart(&mut self, t_id: TId, c_id: CId, t: Time) -> bool {
         if self.entities.connections.contains_key(&c_id) {
             self.undo_train_journey(t_id, t);
@@ -124,10 +141,12 @@ impl Timetable {
         }
     }
 
+    /// Undoing a train journey from the given point in time to the end. This
+    /// includes undoing all passenger journeys that have boarded to the train
+    /// in the timespan.
     fn undo_train_journey(&mut self, t_id: TId, t: Time) {
         for i in t..self.solution.0.len() {
             // unboard all passengers
-
             (0..self.solution.0[i].p_location.len()).for_each(|p_id| {
                 if let Boarding::Some(boarding) = self.solution.boarding_at(p_id, t) {
                     if boarding.1 == t_id {
@@ -289,10 +308,6 @@ impl Timetable {
             })
             .collect::<Vec<(usize, (CId, Connection))>>();
 
-        // for (t_id, _) in trains_iterator.clone() {
-        //     println!("can depart {}", t_id);
-        // }
-
         if let Some((_, (c_id, c))) = connections.choose(&mut self.rnd) {
             // find a random train that is on the same station
             let trains = trains_iterator
@@ -414,15 +429,6 @@ impl fmt::Display for Timetable {
             .for_each(|(t_id, train)| {
                 writeln!(f, "[Train:{}]", train.name);
                 self.solution.0.iter().enumerate().for_each(|(t, s)| {
-                    // match self.solution.0[t].t_location[t_id] {
-                    //     TLocation::Station(s_id) => {
-                    //         writeln!(f, "{} Station {}", t, self.entities.stations[s_id].name)
-                    //     }
-                    //     TLocation::Connection(c_id) => {
-                    //         writeln!(f, "{} Connection ({}, {})", t, c_id.0, c_id.1)
-                    //     }
-                    //     _ => writeln!(f, "{} None", t),
-                    // };
                     if let Start::Station(s_id) = self.solution.t_start_at(t_id, t) {
                         writeln!(f, "{} Start {}", t, self.entities.stations[s_id].name);
                     }
@@ -444,13 +450,6 @@ impl fmt::Display for Timetable {
             .for_each(|(p_id, passenger)| {
                 writeln!(f, "[Passenger:{}]", passenger.name);
                 self.solution.0.iter().enumerate().for_each(|(t, s)| {
-                    // match self.solution.0[t].p_location[p_id] {
-                    //     PLocation::Station(s_id) => writeln!(f, "{} Station {}", t, s_id),
-                    //     PLocation::Train(t_id) => {
-                    //         writeln!(f, "{} Train {}", t, t_id)
-                    //     }
-                    //     PLocation::Arrived => writeln!(f, "{} Arrived", t),
-                    // };
                     if let Boarding::Some((_, t_id)) = self.solution.boarding_at(p_id, t) {
                         writeln!(f, "{} Board {}", t, self.entities.trains[t_id].name);
                     } else if self.solution.detrain_at(p_id, t) == Detrain::Ok {
