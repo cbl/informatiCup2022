@@ -7,17 +7,17 @@ use crate::train::{Location as TLocation, Train};
 use crate::types::{Capacity, Time};
 use std::collections::HashMap;
 
-/// The entities struct holds all existing entities and the corresponding meta
+/// The model struct holds all existing entities and the corresponding meta
 /// data. This includes a list of stations, connections, trains and passengers.
 #[derive(Clone)]
-pub struct Entities {
+pub struct Model {
     pub stations: Vec<Station>,
     pub connections: Connections,
     pub trains: Vec<Train>,
     pub passengers: Vec<Passenger>,
 }
 
-impl Entities {
+impl Model {
     /// Gets the latest arrival time of all passengers.
     pub fn latest_arrival(&self) -> PArrivalTime {
         let mut t = 0;
@@ -73,12 +73,15 @@ impl Entities {
         Solution(
             (0..latest_arrival + 1)
                 .into_iter()
-                .map(|t: Time| State {
-                    s_capacity: s_capacity.clone(),
-                    c_capacity: c_capacity.clone(),
-                    t_capacity: t_capacity.clone(),
-                    t_location: t_location.clone(),
-                    p_location: p_location.clone(),
+                .map(|t: Time| {
+                    State::new(
+                        t,
+                        s_capacity.clone(),
+                        c_capacity.clone(),
+                        t_capacity.clone(),
+                        t_location.clone(),
+                        p_location.clone(),
+                    )
                 })
                 .collect::<Vec<State>>(),
         )

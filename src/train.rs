@@ -22,7 +22,7 @@ impl StartStation {
     }
 }
 
-#[derive(Clone, PartialEq, Copy)]
+#[derive(Clone, PartialEq, Copy, Hash)]
 pub enum Location {
     Connection(CId),
     Station(SId),

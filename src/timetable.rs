@@ -1,5 +1,5 @@
 use crate::connection::{Connection, Id as CId};
-use crate::entities::Entities;
+use crate::model::Model;
 use crate::passenger::{Capacity, Id as PId, Location as PLocation};
 use crate::solution::Solution;
 use crate::state::{Boarding, Departure, Detrain, Start};
@@ -11,12 +11,12 @@ use rand::seq::SliceRandom;
 use rand::Rng;
 use std::fmt;
 
-/// A timetable holds information about all existing entities - stations,
-/// connections, trains and passengers - and the solution which stores the state
+/// A timetable holds information about the model - stations, connections,
+/// trains and passengers - and the solution which stores the state
 /// of each entity at any given point in time.
 #[derive(Clone)]
 pub struct Timetable {
-    pub entities: Entities,
+    pub model: Model,
     pub solution: Solution,
     rnd: ThreadRng,
 }
@@ -29,9 +29,9 @@ impl Timetable {
     // are made
 
     /// Create a new Timetable instance.
-    pub fn new(entities: Entities, solution: Solution) -> Timetable {
+    pub fn new(model: Model, solution: Solution) -> Timetable {
         Timetable {
-            entities,
+            model,
             solution,
             rnd: rand::thread_rng(),
         }
@@ -74,7 +74,7 @@ impl Timetable {
             self.solution.0[i].p_location[p_id] = PLocation::Train(t_id);
 
             // decrease capacity of the boarded train
-            self.solution.0[i].t_capacity[t_id] -= self.entities.passengers[p_id].size;
+            self.solution.0[i].t_capacity[t_id] -= self.model.passengers[p_id].size;
         }
     }
 
@@ -88,11 +88,11 @@ impl Timetable {
             // update passenger location
 
             self.solution.0[i].p_location[p_id] =
-                match self.entities.passengers[p_id].destination == s_id {
+                match self.model.passengers[p_id].destination == s_id {
                     true => PLocation::Arrived,
                     false => {
                         // decrease the capacity of the station when the passenger has not arrived yet.
-                        self.solution.0[i].s_capacity[s_id] -= self.entities.passengers[p_id].size;
+                        self.solution.0[i].s_capacity[s_id] -= self.model.passengers[p_id].size;
                         PLocation::Station(s_id)
                     }
                 };
@@ -104,15 +104,15 @@ impl Timetable {
 
     /// Depart a train from a station at the given point in time.
     pub fn depart(&mut self, t_id: TId, c_id: CId, t: Time) -> bool {
-        if self.entities.connections.contains_key(&c_id) {
+        if self.model.connections.contains_key(&c_id) {
             self.undo_train_journey(t_id, t);
         }
 
-        if let Some(connection) = self.entities.connections.get(&c_id) {
+        if let Some(connection) = self.model.connections.get(&c_id) {
             for i in t..self.solution.0.len() {
                 // Zeiteinheiten * Geschwindigkeit >= Streckenlänge
                 // https://github.com/informatiCup/informatiCup2022/issues/7
-                if ((i - t) as f64 * self.entities.trains[t_id].speed) >= connection.distance {
+                if ((i - t) as f64 * self.model.trains[t_id].speed) >= connection.distance {
                     // update train location to the destination
                     self.solution.0[i].t_location[t_id] = TLocation::Station(c_id.1);
                     // decrease station capacity
@@ -251,8 +251,7 @@ impl Timetable {
             .filter(|(p_id, pl)| {
                 trains_iterator.clone().any(|(t_id, tl)| {
                     tl.matches_passenger_station(&pl)
-                        && self.solution.0[t].t_capacity[t_id]
-                            >= self.entities.passengers[*p_id].size
+                        && self.solution.0[t].t_capacity[t_id] >= self.model.passengers[*p_id].size
                 })
             })
             .collect::<Vec<(PId, PLocation)>>();
@@ -295,7 +294,7 @@ impl Timetable {
         // find a random connection that match the location of any train in a station
         // and has capacity greater that 0.
         let connections = self
-            .entities
+            .model
             .connections
             .clone()
             .into_iter()
@@ -329,7 +328,7 @@ impl Timetable {
 
     pub fn switch_random_train_start(&mut self) -> bool {
         let trains = self
-            .entities
+            .model
             .trains
             .clone()
             .into_iter()
@@ -381,10 +380,10 @@ impl Timetable {
     fn increase_passenger_location_capacity(&mut self, p_id: PId, t: Time) {
         match self.solution.0[t].p_location[p_id] {
             PLocation::Train(t_id) => {
-                self.solution.0[t].t_capacity[t_id] += self.entities.passengers[p_id].size
+                self.solution.0[t].t_capacity[t_id] += self.model.passengers[p_id].size
             }
             PLocation::Station(s_id) => {
-                self.solution.0[t].s_capacity[s_id] += self.entities.passengers[p_id].size;
+                self.solution.0[t].s_capacity[s_id] += self.model.passengers[p_id].size;
             }
             _ => {}
         };
@@ -393,10 +392,10 @@ impl Timetable {
     fn decrease_passenger_location_capacity(&mut self, p_id: PId, t: Time) {
         match self.solution.0[t].p_location[p_id] {
             PLocation::Train(t_id) => {
-                self.solution.0[t].t_capacity[t_id] -= self.entities.passengers[p_id].size
+                self.solution.0[t].t_capacity[t_id] -= self.model.passengers[p_id].size
             }
             PLocation::Station(s_id) => {
-                self.solution.0[t].s_capacity[s_id] -= self.entities.passengers[p_id].size;
+                self.solution.0[t].s_capacity[s_id] -= self.model.passengers[p_id].size;
             }
             _ => {}
         };
@@ -405,7 +404,7 @@ impl Timetable {
     fn increase_train_location_capacity(&mut self, t_id: TId, t: Time) {
         match self.solution.0[t].t_location[t_id] {
             TLocation::Connection(prev_c_id) => {
-                if let Some(connection) = self.entities.connections.get(&prev_c_id) {
+                if let Some(connection) = self.model.connections.get(&prev_c_id) {
                     *self.solution.0[t]
                         .c_capacity
                         .get_mut(&connection.name)
@@ -423,7 +422,7 @@ impl Timetable {
 impl fmt::Display for Timetable {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // add train journeys
-        self.entities
+        self.model
             .trains
             .iter()
             .enumerate()
@@ -431,11 +430,11 @@ impl fmt::Display for Timetable {
                 writeln!(f, "[Train:{}]", train.name);
                 self.solution.0.iter().enumerate().for_each(|(t, s)| {
                     if let Start::Station(s_id) = self.solution.t_start_at(t_id, t) {
-                        writeln!(f, "{} Start {}", t, self.entities.stations[s_id].name);
+                        writeln!(f, "{} Start {}", t, self.model.stations[s_id].name);
                     }
 
                     if let Departure::Connection(c_id) = self.solution.departure_at(t_id, t) {
-                        if let Option::Some(connection) = self.entities.connections.get(&c_id) {
+                        if let Option::Some(connection) = self.model.connections.get(&c_id) {
                             writeln!(f, "{} Depart {}", t, connection.name);
                         }
                     }
@@ -444,7 +443,7 @@ impl fmt::Display for Timetable {
             });
 
         // add passenger journeys
-        self.entities
+        self.model
             .passengers
             .iter()
             .enumerate()
@@ -452,7 +451,7 @@ impl fmt::Display for Timetable {
                 writeln!(f, "[Passenger:{}]", passenger.name);
                 self.solution.0.iter().enumerate().for_each(|(t, s)| {
                     if let Boarding::Some((_, t_id)) = self.solution.boarding_at(p_id, t) {
-                        writeln!(f, "{} Board {}", t, self.entities.trains[t_id].name);
+                        writeln!(f, "{} Board {}", t, self.model.trains[t_id].name);
                     } else if self.solution.detrain_at(p_id, t) == Detrain::Ok {
                         writeln!(f, "{} Detrain", t);
                     }

@@ -1,5 +1,5 @@
 use crate::connection::{Connection, Connections, Distance};
-use crate::entities::Entities;
+use crate::model::Model;
 use crate::passenger::Passenger;
 use crate::station::Station;
 use crate::timetable::Timetable;
@@ -138,12 +138,12 @@ pub fn parse(string: &String) -> Timetable {
         };
     }
 
-    let entities = Entities {
+    let model = Model {
         stations,
         trains,
         connections,
         passengers,
     };
 
-    return Timetable::new(entities.clone(), entities.init_solution());
+    return Timetable::new(model.clone(), model.init_solution());
 }

@@ -8,7 +8,7 @@ pub type Capacity = types::Capacity;
 pub type GroupSize = i32;
 pub type ArrivalTime = types::Time;
 
-#[derive(Clone, PartialEq, Copy)]
+#[derive(Clone, PartialEq, Copy, Hash)]
 pub enum Location {
     Arrived,
     Train(TId),

@@ -1,9 +1,12 @@
 use crate::cost::cost;
 use crate::solution::Solution;
+use crate::state::State;
 use crate::timetable::Timetable;
+use fxhash::hash64;
 use plotters::prelude::*;
 use rand::Rng;
 use std::f64::consts::E;
+use std::ptr::null;
 
 /// Problem specific Boltzman's constant may have to adjust if your global
 /// value function changes the sizes of the numbers it produces. It is important
@@ -26,6 +29,9 @@ const INITIAL_TEMPERATURE: f64 = 1.0;
 /// Number of steps between temperature change -- Lower makes it faster, higher
 /// makes it potentially better. Typically 100 to 1000
 const STEPS_PER_TEMP: i32 = 100;
+
+const MAX_TABU: usize = 1000;
+const LAMBDA: f64 = 5;
 
 pub struct Annealer {
     costs: Vec<f64>,
@@ -52,6 +58,76 @@ impl Annealer {
         }
 
         tt.solution = best_solution;
+    }
+
+    pub fn search(&mut self, tt: &mut Timetable) {
+        let mut rng = rand::thread_rng();
+
+        // current time
+        let mut t = 0;
+        let t_max = tt.solution.0.len();
+
+        // the current system temperature
+        let mut temperature: f64 = INITIAL_TEMPERATURE;
+
+        // the current solution
+        let mut solution: Solution;
+
+        // neighbourhood (list of possible states)
+        let mut neighbourhood: Vec<State> = vec![];
+        let mut best_neighbour: State;
+
+        // the states that are tabu
+        let mut tabu: Vec<u64> = vec![];
+
+        // the current state
+        let state: State;
+        let null_state: State;
+
+        // delta cost
+        let mut delta = 0.0;
+        let mut merit = 0.0;
+        let mut flip = 0.0;
+        let mut jump = 0.0;
+
+        loop {
+            for i in 1..STEPS_PER_TEMP {
+                null_state = state.next_null();
+                neighbourhood = state.neighbourhood();
+
+                best_neighbour = null_state;
+
+                // find neighbour with best cost that is not tabu
+                for s in neighbourhood {
+                    if tabu.contains(&hash64(&s)) {
+                        continue;
+                    }
+
+                    if s.fitness() > best_neighbour.fitness() {
+                        best_neighbour = s;
+                    }
+                }
+
+                state = best_neighbour;
+                solution.0.push(state);
+
+                if state != null_state {
+                    tabu.push(hash64(&state));
+                }
+
+                if tabu.len() > MAX_TABU {
+                    tabu.pop();
+                }
+
+                if t == t_max {
+                    jump = rng.gen_range(0.0..1.0);
+                    t = (E.powf(LAMBDA * temperature * (jump - 1.0))
+                        - E.powf(-LAMBDA * temperature)) as usize;
+                } else {
+                    t += 1;
+                }
+            }
+        }
     }
 
     pub fn anneal(&mut self, tt: &mut Timetable) {
