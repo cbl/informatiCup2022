@@ -1,22 +1,27 @@
-use rstrain::annealer::Annealer;
-use rstrain::cost::{cost, delays};
 use rstrain::parser::parse;
+use rstrain::tabu::TabuSearch;
 use std::env;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
 
+    let verbose = true;
+
     if args.len() < 2 {
         println!("Missing input!");
     } else {
-        let mut tt = parse(&args[1]);
+        let model = parse(&args[1]);
 
-        let mut annealer = Annealer::new();
-        annealer.repeated(&mut tt, 3);
-        annealer.plot(&"plots/costs.png".to_owned());
+        let mut tabu = TabuSearch::new();
+        let solution = tabu.search(&model);
+        // solution.plot(&"plots/costs.png".to_owned());
 
-        println!("\n{}", tt.to_string());
-        println!("cost {}", cost(&tt));
-        println!("delays {}", delays(&tt));
+        println!("\n{}", solution.to_string(&model, verbose));
+        println!(
+            "Arrived Passengers: {}/{}",
+            solution.0[solution.0.len() - 1].arrived_passengers().len(),
+            model.passengers.len()
+        );
+        // println!("delays {}", delays(&tt));
     }
 }

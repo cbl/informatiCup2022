@@ -1,8 +1,8 @@
-use crate::connection::{Connections, Name as CName};
+use crate::connection::{Connections, Id as CId, Name as CName};
 use crate::passenger::{ArrivalTime as PArrivalTime, Location as PLocation, Passenger};
 use crate::solution::Solution;
 use crate::state::State;
-use crate::station::Station;
+use crate::station::{Id as SId, Station};
 use crate::train::{Location as TLocation, Train};
 use crate::types::{Capacity, Time};
 use std::collections::HashMap;
@@ -31,10 +31,18 @@ impl Model {
         return t;
     }
 
-    /// Gets the initial solution from the all entities.
-    pub fn init_solution(&self) -> Solution {
-        let latest_arrival: Time = self.latest_arrival();
+    pub fn get_destination(&self, s: SId, c: CId) -> Option<SId> {
+        if c.0 == s {
+            return Some(c.1);
+        } else if c.1 == s {
+            return Some(c.0);
+        }
 
+        None
+    }
+
+    /// Gets the initial state from the model.
+    pub fn initial_state(&self) -> State {
         let s_capacity: Vec<Capacity> = self
             .stations
             .clone()
@@ -70,20 +78,13 @@ impl Model {
             .map(|(_, connection)| (connection.name, connection.capacity))
             .collect::<HashMap<CName, Capacity>>();
 
-        Solution(
-            (0..latest_arrival + 1)
-                .into_iter()
-                .map(|t: Time| {
-                    State::new(
-                        t,
-                        s_capacity.clone(),
-                        c_capacity.clone(),
-                        t_capacity.clone(),
-                        t_location.clone(),
-                        p_location.clone(),
-                    )
-                })
-                .collect::<Vec<State>>(),
+        State::new(
+            0,
+            s_capacity.clone(),
+            c_capacity.clone(),
+            t_capacity.clone(),
+            t_location.clone(),
+            p_location.clone(),
         )
     }
 }
