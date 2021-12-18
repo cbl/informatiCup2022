@@ -3,19 +3,75 @@ use crate::move_::Move;
 use crate::solution::Solution;
 use crate::state::State;
 use fxhash::hash64;
-use std::process;
+use rand::Rng;
 
 const MAX_TABU: usize = 10000;
-const REPEATS: i32 = 5;
-const PATHS_PER_T: i32 = 15;
+const REPEATS: i32 = 15;
+const NO_CHANGES_BREAK: i32 = 5;
 
 pub struct TabuSearch {
-    costs: Vec<f64>,
+    tabu: Vec<u64>,
+    pub fitness: Vec<f64>,
 }
 
 impl TabuSearch {
     pub fn new() -> TabuSearch {
-        TabuSearch { costs: vec![] }
+        TabuSearch {
+            tabu: vec![],
+            fitness: vec![],
+        }
+    }
+
+    fn find_neighbour(&mut self, state: &State, model: &Model) -> State {
+        // list of possible states
+        let mut moves: Vec<Move> = vec![];
+
+        // the best neighbour
+        let mut neighbour = state.clone();
+
+        // null state
+        let mut null: State = neighbour.clone();
+
+        // the next neighbour that is being checked
+        let mut next: State;
+
+        for t_id in 0..model.trains.len() {
+            moves = neighbour.get_moves(t_id, model);
+
+            if moves.is_empty() {
+                continue;
+            }
+
+            null = neighbour.clone();
+
+            // find neighbour with best cost that is not tabu
+            for m in moves.iter() {
+                next = null.clone();
+                next.make_move(*m, model);
+
+                if self.tabu.contains(&hash64(&next)) {
+                    continue;
+                }
+
+                if next.fitness(model) <= neighbour.fitness(model) {
+                    self.fitness.push(next.fitness(model));
+                    neighbour = next.clone();
+                }
+            }
+
+            // add to tabu list
+            self.add_tabu_state(&neighbour);
+        }
+
+        neighbour
+    }
+
+    fn add_tabu_state(&mut self, state: &State) {
+        self.tabu.push(hash64(state));
+
+        if self.tabu.len() > MAX_TABU {
+            self.tabu.pop();
+        }
     }
 
     pub fn search(&mut self, model: &Model) -> Solution {
@@ -24,87 +80,56 @@ impl TabuSearch {
 
         // the current solution
         let mut solution: Solution = Solution::new();
+
+        // the best solution
         let mut best_solution: Solution = Solution::new();
 
-        // list of possible states
-        let mut moves: Vec<Move> = vec![];
-
-        // the states that are tabu
-        let mut tabu: Vec<u64> = vec![];
-
         // the current state
-        let mut best_neighbour: State = model.initial_state();
-        let mut null_state: State = best_neighbour.clone();
-        let mut check_state: State;
+        let mut next: State = model.initial_state();
+
+        //
+        let mut start: usize = 0;
+
+        let mut best_fitness = f64::MAX;
+
+        let mut no_changes = 0;
 
         for _ in 0..REPEATS {
-            for i in 0..t_max {
-                for _ in 0..PATHS_PER_T {
-                    if i == 0 {
-                        null_state = model.initial_state();
-                    } else {
-                        null_state = best_solution.0[i - 1].clone().next_null(model);
-                    }
+            best_fitness = f64::MAX;
+            for _ in start..t_max {
+                next = self.find_neighbour(&next.next_null(model), model);
 
-                    best_neighbour = null_state;
-                    solution.0.drain(i..);
+                solution.0.push(next.clone());
 
-                    for t in i..t_max {
-                        // choose move for each train
-                        for t_id in 0..model.trains.len() {
-                            moves = best_neighbour.neighbourhood(t_id, model);
+                if next.arrived_passengers().len() == model.passengers.len() {
+                    break;
+                }
 
-                            if moves.is_empty() {
-                                continue;
-                            }
-
-                            // set null_state for each train
-                            null_state = best_neighbour.clone();
-
-                            // find neighbour with best cost that is not tabu
-                            for m in moves.iter() {
-                                check_state = best_neighbour.clone();
-                                check_state.make_move(*m, model);
-
-                                if tabu.contains(&hash64(&check_state)) {
-                                    continue;
-                                }
-
-                                println!("{} ({})", m.to_string(model), check_state.fitness(model));
-
-                                if check_state.fitness(model) < best_neighbour.fitness(model) {
-                                    best_neighbour = check_state;
-                                }
-                            }
-
-                            // add to tabu list
-                            let hash = hash64(&best_neighbour);
-                            if best_neighbour != null_state && !tabu.contains(&hash) {
-                                tabu.push(hash);
-
-                                if tabu.len() > MAX_TABU {
-                                    tabu.pop();
-                                }
-                            }
-                        }
-
-                        solution.0.push(best_neighbour.clone());
-
-                        null_state = best_neighbour.next_null(model);
-                        best_neighbour = null_state;
-                    }
-
-                    println!("{}", solution.to_string(model, true));
-
-                    process::exit(1);
-
-                    if solution.fitness(model) <= best_solution.fitness(model) {
-                        best_solution = solution.clone();
-                    } else {
-                        solution = best_solution.clone();
-                    }
+                if next.fitness(model) < best_fitness {
+                    best_fitness = next.fitness(model);
+                    no_changes = 0;
+                } else if no_changes > NO_CHANGES_BREAK {
+                    break;
+                } else {
+                    no_changes += 1;
                 }
             }
+
+            if solution.fitness(model) <= best_solution.fitness(model) {
+                best_solution = solution.clone();
+            } else {
+                solution = best_solution.clone();
+            }
+
+            start = rand::thread_rng().gen_range(0..solution.0.len());
+
+            if start == 0 {
+                next = model.initial_state();
+            } else {
+                next = best_solution.0[start - 1].clone().next_null(model);
+            }
+
+            solution.0.drain(start..);
         }
 
         best_solution

@@ -1,6 +1,8 @@
 use crate::model::Model;
 use crate::move_::Move;
+use crate::passenger::Id as PId;
 use crate::state::State;
+use crate::types::Time;
 use std::fmt;
 
 /// The soltion holds a list of states for all entities at any given point in
@@ -15,7 +17,15 @@ impl Solution {
         Solution(states)
     }
 
-    pub fn fitness(&mut self, model: &Model) -> f64 {
+    pub fn arrived_passengers(&self) -> Vec<PId> {
+        self.0[self.0.len() - 1].arrived_passengers()
+    }
+
+    pub fn delays(&self) -> Vec<i32> {
+        self.0[self.0.len() - 1].p_delays.clone()
+    }
+
+    pub fn fitness(&self, model: &Model) -> f64 {
         let len = self.0.len();
 
         if len == 0 {
@@ -30,7 +40,7 @@ impl Solution {
 
         self.0.iter().enumerate().for_each(|(t, state)| {
             //
-            string.push_str(&format!("[Time:{}]\n", t));
+            string.push_str(&format!("[Time:{}][Fitness:{}]\n", t, state.fitness(model)));
 
             for m in &state.moves {
                 string.push_str(&m.to_string(model));

@@ -137,10 +137,5 @@ pub fn parse(string: &String) -> Model {
         };
     }
 
-    Model {
-        stations,
-        trains,
-        connections,
-        passengers,
-    }
+    Model::new(stations, connections, trains, passengers)
 }

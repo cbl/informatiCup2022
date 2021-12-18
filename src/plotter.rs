@@ -1,0 +1,64 @@
+use crate::tabu::TabuSearch;
+use plotters::prelude::*;
+use std::path::Path;
+
+pub struct Plotter {
+    pub path: &'static str,
+}
+
+impl Plotter {
+    fn file_name(&self, base_name: &str) -> String {
+        let mut file_name = format!("{}/{}.png", self.path, base_name);
+
+        for n in 0.. {
+            if !Path::new(&file_name).is_file() {
+                break;
+            }
+
+            file_name = format!("{}/{}_{}.png", self.path, base_name, n);
+        }
+
+        file_name
+    }
+
+    pub fn plot_fitness(&self, tabu: &TabuSearch) -> Result<(), Box<dyn std::error::Error>> {
+        let file_name = self.file_name("fitness");
+        let root = BitMapBackend::new(&file_name, (1024, 800)).into_drawing_area();
+
+        root.fill(&WHITE)?;
+
+        println!("{}", tabu.fitness.len());
+
+        let min = tabu
+            .fitness
+            .iter()
+            .fold(f64::INFINITY, |a, &b| a.min(b))
+            .min(-0.0);
+
+        let max = tabu.fitness.iter().fold(0.0, |a, &b| match a > b {
+            true => a,
+            false => b,
+        });
+
+        let mut chart = ChartBuilder::on(&root)
+            .set_label_area_size(LabelAreaPosition::Left, 50)
+            .set_label_area_size(LabelAreaPosition::Bottom, 50)
+            .caption("Fitness By Iteration", ("sans-serif", 30))
+            .build_cartesian_2d(-10..(tabu.fitness.len() as i32), (min - 2.0)..(max + 2.0))
+            .unwrap();
+
+        chart.configure_mesh().draw().unwrap();
+
+        chart
+            .draw_series(tabu.fitness.iter().enumerate().map(|(x, y)| {
+                Circle::new((x as i32, *y), 1, Into::<ShapeStyle>::into(&BLACK).filled())
+            }))
+            .unwrap();
+
+        // To avoid the IO failure being ignored silently, we manually call the present function
+        root.present().expect("Unable to write result to file, please make sure 'plotters-doc-data' dir exists under current dir");
+        println!("Result has been saved to {}", file_name);
+
+        Ok(())
+    }
+}
