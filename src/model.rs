@@ -1,12 +1,12 @@
 use crate::connection::{Connections, Distance, Id as CId, Name as CName};
-use crate::move_::Move;
-use crate::passenger::{ArrivalTime as PArrivalTime, Location as PLocation, Passenger};
+use crate::passenger::{ArrivalTime as PArrivalTime, Id as PId, Location as PLocation, Passenger};
 use crate::state::State;
 use crate::station::{Id as SId, Station};
 use crate::train::{Location as TLocation, Train};
 use crate::types::{Capacity, Time};
+use std::cmp::Reverse;
 
-use std::collections::{BinaryHeap, HashMap};
+use std::collections::HashMap;
 
 #[derive(Clone)]
 pub struct Path {
@@ -24,6 +24,7 @@ pub struct Model {
     pub passengers: Vec<Passenger>,
     pub paths: HashMap<CId, Path>,
     pub max_distance: Distance,
+    pub max_arrival: Time,
 }
 
 impl Model {
@@ -36,6 +37,22 @@ impl Model {
     ) -> Model {
         let (paths, max_distance) = shortest_paths(&stations, &connections);
 
+        // sort passengers by arrival time
+        let mut sorted_passengers = passengers.clone();
+        sorted_passengers.sort_by_key(|p| p.arrival);
+
+        for (i, p) in sorted_passengers.iter().enumerate() {
+            println!("{}: {}", i, p.name);
+        }
+
+        let mut max_arrival = 0;
+
+        for p in &passengers {
+            if p.arrival > max_arrival {
+                max_arrival = p.arrival;
+            }
+        }
+
         Model {
             stations,
             connections,
@@ -43,20 +60,16 @@ impl Model {
             passengers,
             paths,
             max_distance,
+            max_arrival,
         }
     }
 
-    /// Gets the latest arrival time of all passengers.
-    pub fn latest_arrival(&self) -> PArrivalTime {
-        let mut t = 0;
+    pub fn normalize_distance(&self, d: Distance) -> f64 {
+        d / self.max_distance
+    }
 
-        for p in &self.passengers {
-            if p.arrival > t {
-                t = p.arrival;
-            }
-        }
-
-        return t;
+    pub fn normalized_arrival(&self, p_id: PId) -> f64 {
+        self.passengers[p_id].arrival as f64 / self.max_arrival as f64
     }
 
     pub fn get_destination(&self, s: SId, c: CId) -> Option<SId> {
@@ -111,7 +124,7 @@ impl Model {
             .collect::<HashMap<CName, Capacity>>();
 
         let p_delays = (0..self.passengers.len())
-            .map(|_| self.latest_arrival() as i32)
+            .map(|_| self.max_arrival as i32)
             .collect();
 
         State::new(

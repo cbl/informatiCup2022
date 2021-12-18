@@ -6,9 +6,27 @@ use crate::train::Id as TId;
 
 #[derive(Hash, Clone, PartialEq, Copy)]
 pub enum Move {
+    /// Board move
+    /// TId - the id of the train
+    /// PId - the id of the passenger being boarded
+    /// SId - the id of the station from where the passenger is boarded
     Board(TId, PId, SId),
+
+    /// Detrain move
+    /// TId - the id of the train
+    /// PId - the id of the passenger being detrained
+    /// SId - the id of the station where the passenger has arrived
     Detrain(TId, PId, SId),
+
+    /// Depart move
+    /// TId - the id of the departing train
+    /// SId - the id of the **destination** station
+    /// CId - the id of connection
     Depart(TId, SId, CId),
+
+    /// TrainStart move
+    /// TId - the id of the starting train
+    /// SId - the if of the start station
     TrainStart(TId, SId),
 }
 

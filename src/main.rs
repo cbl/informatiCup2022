@@ -6,7 +6,7 @@ use std::env;
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    let verbose = true;
+    let verbose = false;
 
     if args.len() < 2 {
         println!("Missing input!");
@@ -20,6 +20,14 @@ fn main() {
         println!("\n{}", solution.to_string(&model, verbose));
         println!("Fitness: {}", solution.fitness(&model));
         println!("Delays: {:?}", solution.delays());
+        println!(
+            "Positive Delays: {:?}",
+            solution
+                .delays()
+                .into_iter()
+                .filter(|d| *d > 0)
+                .collect::<Vec<i32>>()
+        );
         println!("Total Delays: {:?}", solution.delays().iter().sum::<i32>());
         println!(
             "Arrived Passengers: {}/{}",

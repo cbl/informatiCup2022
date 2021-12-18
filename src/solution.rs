@@ -2,10 +2,8 @@ use crate::model::Model;
 use crate::move_::Move;
 use crate::passenger::Id as PId;
 use crate::state::State;
-use crate::types::Time;
-use std::fmt;
 
-/// The soltion holds a list of states for all entities at any given point in
+/// The soltion holds a list of states at any given point in
 /// time.
 #[derive(Clone)]
 pub struct Solution(pub Vec<State>);
@@ -17,14 +15,17 @@ impl Solution {
         Solution(states)
     }
 
+    /// Gets a list of the arrived passengers.
     pub fn arrived_passengers(&self) -> Vec<PId> {
         self.0[self.0.len() - 1].arrived_passengers()
     }
 
+    /// Gets a list of delays for each passenger.
     pub fn delays(&self) -> Vec<i32> {
         self.0[self.0.len() - 1].p_delays.clone()
     }
 
+    /// Gets the fitness of the solution
     pub fn fitness(&self, model: &Model) -> f64 {
         let len = self.0.len();
 
@@ -88,7 +89,7 @@ impl Solution {
             .iter()
             .enumerate()
             .for_each(|(p_id, passenger)| {
-                string.push_str(&format!("[Passenger:{}]", passenger.name));
+                string.push_str(&format!("[Passenger:{}]\n", passenger.name));
 
                 self.0.iter().enumerate().for_each(|(t, state)| {
                     if let Some(m) = state.passenger_move(p_id) {

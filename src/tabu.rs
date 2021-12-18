@@ -6,8 +6,8 @@ use fxhash::hash64;
 use rand::Rng;
 
 const MAX_TABU: usize = 10000;
-const REPEATS: i32 = 15;
-const NO_CHANGES_BREAK: i32 = 5;
+const REPEATS: i32 = 100;
+const NO_CHANGES_MAX: i32 = 10;
 
 pub struct TabuSearch {
     tabu: Vec<u64>,
@@ -76,7 +76,7 @@ impl TabuSearch {
 
     pub fn search(&mut self, model: &Model) -> Solution {
         // current time
-        let t_max = model.latest_arrival() + 1;
+        let mut t_max = model.max_arrival + 1;
 
         // the current solution
         let mut solution: Solution = Solution::new();
@@ -96,19 +96,21 @@ impl TabuSearch {
 
         for _ in 0..REPEATS {
             best_fitness = f64::MAX;
-            for _ in start..t_max {
+            for t in start..t_max {
                 next = self.find_neighbour(&next.next_null(model), model);
 
                 solution.0.push(next.clone());
 
                 if next.arrived_passengers().len() == model.passengers.len() {
                     break;
+                } else if t == t_max {
+                    t_max += 1;
                 }
 
                 if next.fitness(model) < best_fitness {
                     best_fitness = next.fitness(model);
                     no_changes = 0;
-                } else if no_changes > NO_CHANGES_BREAK {
+                } else if no_changes > NO_CHANGES_MAX {
                     break;
                 } else {
                     no_changes += 1;

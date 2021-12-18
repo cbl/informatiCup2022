@@ -7,6 +7,7 @@ pub struct Plotter {
 }
 
 impl Plotter {
+    /// Gets the file name by the given base_name.
     fn file_name(&self, base_name: &str) -> String {
         let mut file_name = format!("{}/{}.png", self.path, base_name);
 
@@ -56,8 +57,10 @@ impl Plotter {
             .unwrap();
 
         // To avoid the IO failure being ignored silently, we manually call the present function
-        root.present().expect("Unable to write result to file, please make sure 'plotters-doc-data' dir exists under current dir");
-        println!("Result has been saved to {}", file_name);
+        root.present().expect(
+            "Unable to write result to file, please make sure 'plots' dir exists under current dir",
+        );
+        // println!("Result has been saved to {}", file_name);
 
         Ok(())
     }

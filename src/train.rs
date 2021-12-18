@@ -1,5 +1,4 @@
 use crate::connection::Id as CId;
-use crate::passenger::Location as PLocation;
 use crate::station::Id as SId;
 use crate::types;
 
@@ -33,39 +32,6 @@ pub enum Location {
     Connection(CId, SId, Progress),
     Station(SId),
     Nothing,
-}
-
-impl Location {
-    pub fn is_station(&self) -> bool {
-        match self {
-            Location::Station(_) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_connection(&self) -> bool {
-        match self {
-            Location::Connection(_, _, _) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_nothing(&self) -> bool {
-        match self {
-            Location::Nothing => true,
-            _ => false,
-        }
-    }
-
-    pub fn matches_passenger_station(&self, p_location: &PLocation) -> bool {
-        match p_location {
-            &PLocation::Station(p_s_id) => match self {
-                &Location::Station(l_s_id) => p_s_id == l_s_id,
-                _ => false,
-            },
-            _ => false,
-        }
-    }
 }
 
 #[derive(Clone)]
