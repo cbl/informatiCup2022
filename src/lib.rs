@@ -1,9 +1,9 @@
 pub mod connection;
+pub mod debug;
 pub mod model;
 pub mod move_;
 pub mod parser;
 pub mod passenger;
-pub mod plotter;
 pub mod solution;
 pub mod state;
 pub mod station;

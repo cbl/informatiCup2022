@@ -1,10 +1,9 @@
 use crate::connection::{Connections, Distance, Id as CId, Name as CName};
-use crate::passenger::{ArrivalTime as PArrivalTime, Id as PId, Location as PLocation, Passenger};
+use crate::passenger::{Id as PId, Location as PLocation, Passenger};
 use crate::state::State;
 use crate::station::{Id as SId, Station};
 use crate::train::{Location as TLocation, Train};
 use crate::types::{Capacity, Time};
-use std::cmp::Reverse;
 
 use std::collections::HashMap;
 
@@ -36,14 +35,6 @@ impl Model {
         passengers: Vec<Passenger>,
     ) -> Model {
         let (paths, max_distance) = shortest_paths(&stations, &connections);
-
-        // sort passengers by arrival time
-        let mut sorted_passengers = passengers.clone();
-        sorted_passengers.sort_by_key(|p| p.arrival);
-
-        for (i, p) in sorted_passengers.iter().enumerate() {
-            println!("{}: {}", i, p.name);
-        }
 
         let mut max_arrival = 0;
 
@@ -174,7 +165,6 @@ fn shortest_paths(
         let mut parent = vec![];
         let mut distance = vec![];
         let mut v: SId = start; // current vertex to process
-        let mut w: SId; // canidate next vertice
         let mut dist; // best current distance from start
         let mut weight;
 

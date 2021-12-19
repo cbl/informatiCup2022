@@ -90,6 +90,8 @@ impl State {
             .map(|delay| *delay as Fitness / model.max_arrival as Fitness)
             .sum::<Fitness>();
 
+        fitness += self.p_delays.iter().filter(|d| **d > 0).sum::<i32>() as f64;
+
         // add train to station for all passengers that havent moved yet
         for p_id in self.new_passengers.iter() {
             // let arrival = model.passengers[*p_id].arrival;
@@ -186,9 +188,11 @@ impl State {
             // when the train is on a station, 3 types of moves are possible:
             // board, detrain, depart
             TLocation::Station(s_id) => {
-                moves.append(&mut self.boardings(t_id, s_id, model));
-                moves.append(&mut self.detrains(t_id, s_id, model));
-                moves.append(&mut self.departments(t_id, s_id, model));
+                if self.t > 0 {
+                    moves.append(&mut self.boardings(t_id, s_id, model));
+                    moves.append(&mut self.detrains(t_id, s_id));
+                    moves.append(&mut self.departments(t_id, s_id, model));
+                }
             }
             // no moves possible when the given train is on a connection.
             TLocation::Connection(_, _, _) => (),
@@ -200,11 +204,12 @@ impl State {
     pub fn boardings(&self, t_id: TId, s_id: SId, model: &Model) -> Vec<Move> {
         self.s_passengers[s_id]
             .iter()
+            .filter(|&p_id| model.passengers[*p_id].size <= self.t_capacity[t_id])
             .map(|p_id| Move::Board(t_id, *p_id, s_id))
             .collect()
     }
 
-    pub fn detrains(&self, t_id: TId, s_id: SId, model: &Model) -> Vec<Move> {
+    pub fn detrains(&self, t_id: TId, s_id: SId) -> Vec<Move> {
         self.t_passengers[t_id]
             .iter()
             .map(|p_id| Move::Detrain(t_id, *p_id, s_id))

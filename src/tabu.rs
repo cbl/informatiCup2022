@@ -2,34 +2,38 @@ use crate::model::Model;
 use crate::move_::Move;
 use crate::solution::Solution;
 use crate::state::State;
+use crate::types::Fitness;
 use fxhash::hash64;
 use rand::Rng;
+use std::time::Instant;
 
-const MAX_TABU: usize = 10000;
-const REPEATS: i32 = 100;
-const NO_CHANGES_MAX: i32 = 10;
+const NO_CHANGES_MAX: i32 = 15;
 
 pub struct TabuSearch {
     tabu: Vec<u64>,
-    pub fitness: Vec<f64>,
+    max_millis: u128,
+    tabu_size: usize,
 }
 
 impl TabuSearch {
-    pub fn new() -> TabuSearch {
+    pub fn new(max_millis: u128, tabu_size: usize) -> TabuSearch {
         TabuSearch {
             tabu: vec![],
-            fitness: vec![],
+            max_millis,
+            tabu_size,
         }
     }
 
     fn find_neighbour(&mut self, state: &State, model: &Model) -> State {
         // list of possible states
+        #[warn(unused_assignments)]
         let mut moves: Vec<Move> = vec![];
 
         // the best neighbour
         let mut neighbour = state.clone();
 
         // null state
+        #[warn(unused_assignments)]
         let mut null: State = neighbour.clone();
 
         // the next neighbour that is being checked
@@ -54,7 +58,6 @@ impl TabuSearch {
                 }
 
                 if next.fitness(model) <= neighbour.fitness(model) {
-                    self.fitness.push(next.fitness(model));
                     neighbour = next.clone();
                 }
             }
@@ -69,14 +72,20 @@ impl TabuSearch {
     fn add_tabu_state(&mut self, state: &State) {
         self.tabu.push(hash64(state));
 
-        if self.tabu.len() > MAX_TABU {
+        if self.tabu.len() > self.tabu_size {
             self.tabu.pop();
         }
     }
 
-    pub fn search(&mut self, model: &Model) -> Solution {
+    pub fn search(&mut self, model: &Model) -> (Solution, u128) {
+        // random generator
+        let mut rnd = rand::thread_rng();
+
+        // start system time
+        let start_time = Instant::now();
+
         // current time
-        let mut t_max = model.max_arrival + 1;
+        let t_max = ((model.max_arrival as f64) * 1.1 + 10.0) as usize;
 
         // the current solution
         let mut solution: Solution = Solution::new();
@@ -90,21 +99,21 @@ impl TabuSearch {
         //
         let mut start: usize = 0;
 
-        let mut best_fitness = f64::MAX;
+        #[warn(unused_assignments)]
+        let mut best_fitness = Fitness::MAX;
 
         let mut no_changes = 0;
 
-        for _ in 0..REPEATS {
-            best_fitness = f64::MAX;
+        while best_solution.fitness() > 0.0 {
+            best_fitness = Fitness::MAX;
+
             for t in start..t_max {
-                next = self.find_neighbour(&next.next_null(model), model);
+                next = self.find_neighbour(&next, model);
 
                 solution.0.push(next.clone());
 
                 if next.arrived_passengers().len() == model.passengers.len() {
                     break;
-                } else if t == t_max {
-                    t_max += 1;
                 }
 
                 if next.fitness(model) < best_fitness {
@@ -115,25 +124,33 @@ impl TabuSearch {
                 } else {
                     no_changes += 1;
                 }
+
+                next = next.next_null(model);
             }
 
-            if solution.fitness(model) <= best_solution.fitness(model) {
+            // remebering best solution by state fitness leads to finding the
+            // best solution faster than just checking the solution fitness.
+            if solution.state_fitness(model) < best_solution.state_fitness(model) {
                 best_solution = solution.clone();
             } else {
                 solution = best_solution.clone();
             }
 
-            start = rand::thread_rng().gen_range(0..solution.0.len());
+            start = rnd.gen_range(0..solution.0.len());
 
             if start == 0 {
                 next = model.initial_state();
             } else {
-                next = best_solution.0[start - 1].clone().next_null(model);
+                next = solution.0[start - 1].next_null(model);
             }
 
             solution.0.drain(start..);
+
+            if self.max_millis < start_time.elapsed().as_millis() {
+                break;
+            }
         }
 
-        best_solution
+        (best_solution, start_time.elapsed().as_millis())
     }
 }
