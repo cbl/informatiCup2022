@@ -8,6 +8,10 @@ use crate::types::{Capacity, Fitness, Time, TimeDiff};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 
+const LAMBDA_DELAY: f64 = 5.0;
+const LAMBDA_NEW_PASSENGERS: f64 = 0.001;
+const LAMBDA_ARRIVAL: f64 = 0.45;
+
 #[derive(Clone, PartialEq)]
 pub struct State {
     pub t: Time,
@@ -81,29 +85,28 @@ impl State {
         //     .sum::<Fitness>();
 
         // arrived passengers
-        fitness += (self.p_location.len() - self.p_arrived.len()) as Fitness * 2.0;
+        // fitness += (self.p_location.len() - self.p_arrived.len()) as Fitness * 2.0;
 
         // delays
         fitness += self
             .p_delays
             .iter()
             .map(|delay| *delay as Fitness / model.max_arrival as Fitness)
-            .sum::<Fitness>();
+            .sum::<Fitness>()
+            * 0.5;
 
-        fitness += self.p_delays.iter().filter(|d| **d > 0).sum::<i32>() as f64;
+        fitness += self.p_delays.iter().filter(|d| **d > 0).sum::<i32>() as f64 * LAMBDA_DELAY;
 
         // add train to station for all passengers that havent moved yet
         for p_id in self.new_passengers.iter() {
-            // let arrival = model.passengers[*p_id].arrival;
-            let size = model.passengers[*p_id].size;
-            let start = model.passengers[*p_id].start;
-
             for (t_id, location) in self.t_location.iter().enumerate() {
                 match location {
                     TLocation::Station(s_id) => {
-                        if *s_id == start {
-                            fitness +=
-                                (size - self.t_capacity[t_id]) as Fitness / size as Fitness * 0.001
+                        if *s_id == model.passengers[*p_id].start {
+                            fitness += (model.passengers[*p_id].size - self.t_capacity[t_id])
+                                as Fitness
+                                / model.passengers[*p_id].size as Fitness
+                                * LAMBDA_NEW_PASSENGERS
                         }
                     }
                     _ => (),
@@ -113,22 +116,14 @@ impl State {
 
         // train locations
         for (t_id, location) in self.t_location.iter().enumerate() {
-            for p_id in self.t_passengers[t_id].iter() {
-                let destination = model.passengers[*p_id].destination;
-                match location {
-                    TLocation::Connection(_, s_id, _) => {
-                        fitness -= 1.0
-                            / (model.normalize_distance(model.distance(*s_id, destination)) + 1.0);
+            if let Some(s_id) = location.next_station() {
+                for p_id in self.t_passengers[t_id].iter() {
+                    fitness -= 1.0
+                        / (model.normalize_distance(
+                            model.distance(s_id, model.passengers[*p_id].destination),
+                        ) + 1.0);
 
-                        fitness += model.normalized_arrival(*p_id) * 0.5;
-                    }
-                    TLocation::Station(s_id) => {
-                        fitness -= 1.0
-                            / (model.normalize_distance(model.distance(*s_id, destination)) + 1.0);
-
-                        fitness += model.normalized_arrival(*p_id) * 0.5;
-                    }
-                    _ => (),
+                    fitness += model.normalized_arrival(*p_id) * LAMBDA_ARRIVAL;
                 }
             }
         }

@@ -107,7 +107,7 @@ impl TabuSearch {
         while best_solution.fitness() > 0.0 {
             best_fitness = Fitness::MAX;
 
-            for t in start..t_max {
+            for _ in start..t_max {
                 next = self.find_neighbour(&next, model);
 
                 solution.0.push(next.clone());

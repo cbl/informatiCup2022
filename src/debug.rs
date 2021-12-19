@@ -18,7 +18,7 @@ pub fn debug(model: Model, solution: Solution, duration: u128) {
     ]));
     table.add_row(Row::new(vec![
         Cell::new("fitness"),
-        Cell::new(&format!("{}", solution.state_fitness(&model))),
+        Cell::new(&format!("{:?}", solution.state_fitness(&model))),
     ]));
     table.add_row(Row::new(vec![
         Cell::new("arrived passengers"),

@@ -34,6 +34,16 @@ pub enum Location {
     Nothing,
 }
 
+impl Location {
+    pub fn next_station(&self) -> Option<SId> {
+        match self {
+            &Location::Connection(_, s_id, _) => Some(s_id),
+            &Location::Station(s_id) => Some(s_id),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct Train {
     pub name: String,
