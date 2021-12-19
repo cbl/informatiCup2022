@@ -6,9 +6,6 @@ pub type Id = types::Id;
 pub type Speed = f64;
 pub type Capacity = types::Capacity;
 
-/// The time a train has been on a connection.
-pub type Progress = usize;
-
 #[derive(Clone, PartialEq)]
 pub enum StartStation {
     Any,
@@ -28,8 +25,8 @@ impl StartStation {
 pub enum Location {
     // - CId: connection id
     // - SId: destination id,
-    // - Progress: time the train has been on the station
-    Connection(CId, SId, Progress),
+    // - Time: the start time
+    Connection(CId, SId, types::Time),
     Station(SId),
     Nothing,
 }

@@ -2,6 +2,7 @@ use clap::{App, Arg};
 use rstrain::debug::debug;
 use rstrain::parser::parse;
 use rstrain::tabu::TabuSearch;
+use std::cmp;
 
 fn main() {
     let matches = App::new("rstrain")
@@ -29,7 +30,14 @@ fn main() {
                 .short("d")
                 .long("debug")
                 .takes_value(false)
-                .help("Print detailed information about the result"),
+                .help("Prints detailed information about the result"),
+        )
+        .arg(
+            Arg::with_name("TMAX")
+                .short("m")
+                .long("t-max")
+                .takes_value(true)
+                .help("The latest time, increase when a solution with a total delay of 0 cannot be found, default value is the latest arrival time of all passengers"),
         )
         .arg(
             Arg::with_name("INPUT")
@@ -65,7 +73,21 @@ fn main() {
         }
     };
 
-    let model = parse(&matches.value_of("INPUT").unwrap().to_string());
+    let mut model = parse(&matches.value_of("INPUT").unwrap().to_string());
+
+    model.t_max = match matches
+        .value_of("TMAX")
+        .unwrap_or("0")
+        .to_string()
+        .parse::<usize>()
+    {
+        Ok(t_max) => cmp::max(t_max, model.t_max),
+        Err(_) => {
+            eprintln!("error: invalid input for [t-max]");
+            return;
+        }
+    };
+
     let mut tabu = TabuSearch::new(max_millis, tabu_size);
 
     let (solution, duration) = tabu.search(&model);

@@ -2,6 +2,7 @@ use crate::model::Model;
 use crate::move_::Move;
 use crate::passenger::Id as PId;
 use crate::state::State;
+use crate::train::Location as TLocation;
 use crate::types::{Fitness, TimeDiff};
 
 /// The soltion holds a list of states at any given point in
@@ -58,6 +59,23 @@ impl Solution {
             for m in &state.moves {
                 string.push_str(&m.to_string(model));
                 string.push_str(&"\n");
+            }
+
+            for (t_id, location) in state.t_location.iter().enumerate() {
+                if let TLocation::Connection(c_id, s_id, t_start) = location {
+                    if t - *t_start == 0 {
+                        continue;
+                    }
+
+                    string.push_str(&format!(
+                        "{} on {} at {:.2}%\n",
+                        model.trains[t_id].name,
+                        model.connections.get(&c_id).unwrap().name,
+                        ((t - *t_start) as f64 * model.trains[t_id].speed)
+                            / model.connections[c_id].distance
+                            * 100.0
+                    ));
+                }
             }
 
             string.push_str(&"\n");

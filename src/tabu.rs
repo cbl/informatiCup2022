@@ -57,6 +57,10 @@ impl TabuSearch {
                     continue;
                 }
 
+                // println!("{} ({})", m.to_string(model), next.fitness(model));
+                // println!("arrived: {:?}", next.p_arrived);
+                // println!("delays: {:?}", next.p_delays);
+
                 if next.fitness(model) <= neighbour.fitness(model) {
                     neighbour = next.clone();
                 }
@@ -84,9 +88,6 @@ impl TabuSearch {
         // start system time
         let start_time = Instant::now();
 
-        // current time
-        let t_max = ((model.max_arrival as f64) * 1.1 + 10.0) as usize;
-
         // the current solution
         let mut solution: Solution = Solution::new();
 
@@ -107,7 +108,7 @@ impl TabuSearch {
         while best_solution.fitness() > 0.0 {
             best_fitness = Fitness::MAX;
 
-            for _ in start..t_max {
+            for _ in start..model.t_max {
                 next = self.find_neighbour(&next, model);
 
                 solution.0.push(next.clone());
@@ -127,6 +128,8 @@ impl TabuSearch {
 
                 next = next.next_null(model);
             }
+
+            // std::process::exit(1);
 
             // remebering best solution by state fitness leads to finding the
             // best solution faster than just checking the solution fitness.

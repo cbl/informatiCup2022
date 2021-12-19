@@ -144,12 +144,15 @@ impl State {
 
         // check for arrived trains
         for (t_id, location) in state.t_location.clone().iter().enumerate() {
-            if let TLocation::Connection(c_id, s_id, p_id) = location {
+            if let TLocation::Connection(c_id, s_id, t_start) = location {
                 // Zeiteinheiten * Geschwindigkeit >= Streckenlänge
                 // https://github.com/informatiCup/informatiCup2022/issues/7
-                if ((*p_id + 1) as f64 * model.trains[t_id].speed)
-                    >= model.connections[c_id].distance
-                {
+
+                // progress in percentage
+                let p = ((state.t - *t_start) as f64 * model.trains[t_id].speed)
+                    / model.connections[c_id].distance;
+
+                if p >= 1.0 {
                     // todo: store arrived trains?
                     state.t_location[t_id] = TLocation::Station(*s_id);
                     // decrease station capacity
@@ -159,8 +162,6 @@ impl State {
                         .c_capacity
                         .get_mut(&model.connections[&c_id].name)
                         .unwrap() += 1;
-                } else {
-                    state.t_location[t_id] = TLocation::Connection(*c_id, *s_id, p_id + 1);
                 }
             }
         }
@@ -272,17 +273,17 @@ impl State {
                 let index = self.new_passengers.iter().position(|p| *p == p_id).unwrap();
                 self.new_passengers.remove(index);
             }
-            Move::Detrain(t_id, p_id, s) => {
+            Move::Detrain(t_id, p_id, s_id) => {
                 // update train capacity
                 self.t_capacity[t_id] += model.passengers[p_id].size;
 
                 // set passenger location
-                if s == model.passengers[p_id].destination {
+                if s_id == model.passengers[p_id].destination {
                     self.p_location[p_id] = PLocation::Arrived;
                     self.p_arrived.push(p_id);
                     self.p_delays[p_id] = self.t as i32 - model.passengers[p_id].arrival as i32;
                 } else {
-                    self.p_location[p_id] = PLocation::Station(s);
+                    self.p_location[p_id] = PLocation::Station(s_id);
                 }
 
                 // forget train passenger
@@ -292,20 +293,20 @@ impl State {
                     .unwrap();
                 self.t_passengers[t_id].remove(index);
             }
-            Move::Depart(t, s, c) => {
+            Move::Depart(t_id, s_id, c_id) => {
                 // set train location
                 // todo: check if 0 is right
-                if let Some(destination) = model.get_destination(s, c) {
-                    self.t_location[t] = TLocation::Connection(c, destination, 0);
+                if let Some(destination) = model.get_destination(s_id, c_id) {
+                    self.t_location[t_id] = TLocation::Connection(c_id, destination, self.t);
                 }
 
                 // increase station capacity
-                self.s_capacity[s] += 1;
+                self.s_capacity[s_id] += 1;
 
                 // decrease connection capacity
                 *self
                     .c_capacity
-                    .get_mut(&model.connections[&c].name)
+                    .get_mut(&model.connections[&c_id].name)
                     .unwrap() -= 1;
             }
             Move::TrainStart(t, s) => {

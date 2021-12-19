@@ -24,6 +24,7 @@ pub struct Model {
     pub paths: HashMap<CId, Path>,
     pub max_distance: Distance,
     pub max_arrival: Time,
+    pub t_max: Time,
 }
 
 impl Model {
@@ -52,6 +53,7 @@ impl Model {
             paths,
             max_distance,
             max_arrival,
+            t_max: max_arrival,
         }
     }
 
@@ -115,7 +117,7 @@ impl Model {
             .collect::<HashMap<CName, Capacity>>();
 
         let p_delays = (0..self.passengers.len())
-            .map(|_| self.max_arrival as i32)
+            .map(|_| self.t_max as i32)
             .collect();
 
         State::new(
