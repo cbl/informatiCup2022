@@ -8,45 +8,11 @@ pub type Capacity = types::Capacity;
 pub type GroupSize = i32;
 pub type ArrivalTime = types::Time;
 
-#[derive(Clone, PartialEq, Copy)]
+#[derive(Clone, PartialEq, Copy, Hash)]
 pub enum Location {
     Arrived,
     Train(TId),
     Station(SId),
-}
-
-impl Location {
-    /// Determines whether the passenger location is a station.
-    pub fn is_station(&self) -> bool {
-        match self {
-            Location::Station(_) => true,
-            _ => false,
-        }
-    }
-
-    /// Determines whether the passenger location is a train.
-    pub fn is_train(&self) -> bool {
-        match self {
-            Location::Train(_) => true,
-            _ => false,
-        }
-    }
-
-    /// Determines whether the passenger location is arrived.
-    pub fn is_arrived(&self) -> bool {
-        match self {
-            Location::Arrived => true,
-            _ => false,
-        }
-    }
-
-    /// Determines whether the passenger location matches the given train id.
-    pub fn matches_train(&self, t_id: TId) -> bool {
-        match self {
-            Location::Train(id) => *id == t_id,
-            _ => false,
-        }
-    }
 }
 
 #[derive(Clone)]

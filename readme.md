@@ -1,6 +1,6 @@
 # informatiCup22
 
-An attempt to solve the railway problem introduced in the [informatiCup2022](https://informaticup.github.io/competition/20-current) using simulated annealing.
+An attempt to solve the railway problem introduced in the [informatiCup2022](https://informaticup.github.io/competition/20-current) using tabu search.
 
 ## Usage
 

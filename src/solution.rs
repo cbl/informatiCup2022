@@ -1,91 +1,146 @@
-use crate::passenger::{Id as PId, Location as PLocation};
-use crate::state::{Boarding, Departure, Detrain, Start, State};
-use crate::train::{Id as TId, Location as TLocation};
-use crate::types::Time;
+use crate::model::Model;
+use crate::move_::Move;
+use crate::passenger::Id as PId;
+use crate::state::State;
+use crate::train::Location as TLocation;
+use crate::types::{Fitness, TimeDiff};
 
-/// The soltion holds a list of states for all entities at any given point in
+/// The soltion holds a list of states at any given point in
 /// time.
 #[derive(Clone)]
 pub struct Solution(pub Vec<State>);
 
 impl Solution {
-    /// Gets the start of a train at the given time.
-    ///
-    /// A train starts at a station when the current location of the train is of
-    /// type `train::Location::Statio(s_id)` and the location for `t-1` is
-    /// `train::Location::Nothing`.
-    pub fn t_start_at(&self, t_id: TId, t: Time) -> Start {
-        match self.0[t].t_location[t_id] {
-            TLocation::Station(s_id) => {
-                if t == 0 {
-                    Start::Station(s_id)
-                } else {
-                    match self.0[t - 1].t_location[t_id] {
-                        TLocation::Nothing => Start::Station(s_id),
-                        _ => Start::Nothing,
+    pub fn new() -> Solution {
+        let states = vec![];
+
+        Solution(states)
+    }
+
+    /// Gets a list of the arrived passengers.
+    pub fn arrived_passengers(&self) -> Vec<PId> {
+        self.0[self.0.len() - 1].arrived_passengers()
+    }
+
+    /// Gets a list of delays for each passenger.
+    pub fn delays(&self) -> Vec<i32> {
+        self.0[self.0.len() - 1].p_delays.clone()
+    }
+
+    /// Gets the fitness of the solution
+    pub fn fitness(&self) -> Fitness {
+        let len = self.0.len();
+
+        if len == 0 {
+            return Fitness::MAX;
+        }
+
+        self.0[len - 1]
+            .p_delays
+            .iter()
+            .filter(|d| **d > 0)
+            .sum::<TimeDiff>() as Fitness
+    }
+
+    pub fn state_fitness(&self, model: &Model) -> Fitness {
+        if let Some(state) = self.0.last() {
+            return state.fitness(model);
+        }
+
+        Fitness::MAX
+    }
+
+    fn to_string_verbose(&self, model: &Model) -> String {
+        let mut string: String = "".to_owned();
+
+        self.0.iter().enumerate().for_each(|(t, state)| {
+            string.push_str(&format!("[Time:{}][Fitness:{}]\n", t, state.fitness(model)));
+
+            for m in &state.moves {
+                string.push_str(&m.to_string(model));
+                string.push_str(&"\n");
+            }
+
+            for (t_id, location) in state.t_location.iter().enumerate() {
+                if let TLocation::Connection(c_id, s_id, t_start) = location {
+                    if t - *t_start == 0 {
+                        continue;
                     }
+
+                    string.push_str(&format!(
+                        "{} on {} at {:.2}%\n",
+                        model.trains[t_id].name,
+                        model.connections.get(&c_id).unwrap().name,
+                        ((t - *t_start) as f64 * model.trains[t_id].speed)
+                            / model.connections[c_id].distance
+                            * 100.0
+                    ));
                 }
             }
-            _ => Start::Nothing,
-        }
+
+            string.push_str(&"\n");
+        });
+
+        string
     }
 
-    /// Gets the departure of a train at the given time.
-    pub fn departure_at(&self, t_id: TId, t: Time) -> Departure {
-        if t == 0 {
-            return Departure::Nothing;
+    pub fn to_string(&self, model: &Model, verbose: bool) -> String {
+        if verbose {
+            return self.to_string_verbose(model);
         }
 
-        match self.0[t].t_location[t_id] {
-            TLocation::Connection(c_id) => match self.0[t - 1].t_location[t_id] {
-                TLocation::Station(_) => Departure::Connection(c_id),
-                _ => Departure::Nothing,
-            },
-            _ => Departure::Nothing,
-        }
-    }
+        let mut string: String = "".to_owned();
 
-    /// Gets the boarding of a passenger at the given time.
-    pub fn boarding_at(&self, p_id: PId, t: Time) -> Boarding {
-        if t == 0 {
-            return Boarding::Nothing;
-        }
+        model.trains.iter().enumerate().for_each(|(t_id, train)| {
+            string.push_str(&format!("[Train:{}]\n", train.name));
 
-        match self.0[t].p_location[p_id] {
-            PLocation::Train(t_id) => match self.0[t - 1].p_location[p_id] {
-                PLocation::Station(s_id) => Boarding::Some((s_id, t_id)),
-                _ => Boarding::Nothing,
-            },
-            _ => Boarding::Nothing,
-        }
-    }
+            self.0.iter().enumerate().for_each(|(t, state)| {
+                if let Some(m) = state.train_move(t_id) {
+                    match m {
+                        Move::TrainStart(_, s_id) => {
+                            string
+                                .push_str(&format!("{} Start {}\n", t, model.stations[*s_id].name));
+                        }
+                        Move::Depart(_, _, c_id) => {
+                            if let Some(connection) = model.connections.get(&c_id) {
+                                string.push_str(&format!("{} Depart {}\n", t, connection.name));
+                            }
+                        }
+                        _ => (),
+                    }
+                }
+            });
 
-    /// Gets the detrain of a passenger at the given time.
-    pub fn detrain_at(&self, p_id: PId, t: Time) -> Detrain {
-        if t == 0 {
-            return Detrain::Nothing;
-        }
+            string.push_str(&"\n");
+        });
 
-        match self.0[t].p_location[p_id] {
-            PLocation::Train(_) => Detrain::Nothing,
-            _ => match self.0[t - 1].p_location[p_id] {
-                PLocation::Train(_) => Detrain::Ok,
-                _ => Detrain::Nothing,
-            },
-        }
-    }
+        model
+            .passengers
+            .iter()
+            .enumerate()
+            .for_each(|(p_id, passenger)| {
+                string.push_str(&format!("[Passenger:{}]\n", passenger.name));
 
-    pub fn is_train_sleeping(&self, t_id: TId, t: Time) -> bool {
-        if t == 0 {
-            return false;
-        }
+                self.0.iter().enumerate().for_each(|(t, state)| {
+                    if let Some(m) = state.passenger_move(p_id) {
+                        match m {
+                            Move::Board(t_id, _, _) => {
+                                string.push_str(&format!(
+                                    "{} Board {}\n",
+                                    t, model.trains[*t_id].name
+                                ));
+                            }
+                            Move::Detrain(_, _, _) => {
+                                string.push_str(&format!("{} Detrain\n", t));
+                            }
+                            _ => (),
+                        }
+                    }
+                });
 
-        match self.0[t].t_location[t_id] {
-            TLocation::Station(_) => match self.0[t - 1].t_location[t_id] {
-                TLocation::Station(_) => true,
-                _ => false,
-            },
-            _ => false,
-        }
+                string.push_str(&"\n");
+            });
+
+        string
     }
 }

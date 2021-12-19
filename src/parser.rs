@@ -1,14 +1,13 @@
 use crate::connection::{Connection, Connections, Distance};
-use crate::entities::Entities;
+use crate::model::Model;
 use crate::passenger::Passenger;
 use crate::station::Station;
-use crate::timetable::Timetable;
 use crate::train::{Speed, StartStation, Train};
 use crate::types;
 use regex::Regex;
 use std::collections::HashMap;
 
-pub fn parse(string: &String) -> Timetable {
+pub fn parse(string: &String) -> Model {
     let re_block = Regex::new(r"(?s)(\[(.*?)\].*?)(?:(?:\r*\n){2})").unwrap();
     let re_entity = Regex::new(r"(^|\s)+([^\s]+)").unwrap();
 
@@ -138,12 +137,5 @@ pub fn parse(string: &String) -> Timetable {
         };
     }
 
-    let entities = Entities {
-        stations,
-        trains,
-        connections,
-        passengers,
-    };
-
-    return Timetable::new(entities.clone(), entities.init_solution());
+    Model::new(stations, connections, trains, passengers)
 }

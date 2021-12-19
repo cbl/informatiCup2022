@@ -1,5 +1,4 @@
 use crate::connection::Id as CId;
-use crate::passenger::Location as PLocation;
 use crate::station::Id as SId;
 use crate::types;
 
@@ -22,42 +21,22 @@ impl StartStation {
     }
 }
 
-#[derive(Clone, PartialEq, Copy)]
+#[derive(Clone, PartialEq, Copy, Hash)]
 pub enum Location {
-    Connection(CId),
+    // - CId: connection id
+    // - SId: destination id,
+    // - Time: the start time
+    Connection(CId, SId, types::Time),
     Station(SId),
     Nothing,
 }
 
 impl Location {
-    pub fn is_station(&self) -> bool {
+    pub fn next_station(&self) -> Option<SId> {
         match self {
-            Location::Station(_) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_connection(&self) -> bool {
-        match self {
-            Location::Connection(_) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_nothing(&self) -> bool {
-        match self {
-            Location::Nothing => true,
-            _ => false,
-        }
-    }
-
-    pub fn matches_passenger_station(&self, p_location: &PLocation) -> bool {
-        match p_location {
-            &PLocation::Station(p_s_id) => match self {
-                &Location::Station(l_s_id) => p_s_id == l_s_id,
-                _ => false,
-            },
-            _ => false,
+            &Location::Connection(_, s_id, _) => Some(s_id),
+            &Location::Station(s_id) => Some(s_id),
+            _ => None,
         }
     }
 }
