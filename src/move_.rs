@@ -22,7 +22,7 @@ pub enum Move {
     /// TId - the id of the departing train
     /// SId - the id of the **destination** station
     /// CId - the id of connection
-    Depart(TId, SId, CId),
+    Depart(TId, (SId, SId), CId),
 
     /// TrainStart move
     /// TId - the id of the starting train
@@ -49,11 +49,12 @@ impl Move {
                     model.stations[*s_id].name,
                 )
             }
-            Move::Depart(t_id, s_id, c_id) => {
+            Move::Depart(t_id, (from, to), c_id) => {
                 format!(
-                    "Depart {} to {} via {}",
+                    "Depart {} from {} to {} via {}",
                     model.trains[*t_id].name,
-                    model.stations[*s_id].name,
+                    model.stations[*from].name,
+                    model.stations[*to].name,
                     model.connections[*c_id].name,
                 )
             }

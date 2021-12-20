@@ -3,7 +3,7 @@ use crate::passenger::{Id as PId, Location as PLocation, Passenger};
 use crate::state::State;
 use crate::station::{Id as SId, Station};
 use crate::train::{Location as TLocation, StartStation, Train};
-use crate::types::{Capacity, Fitness, Time};
+use crate::types::{Capacity, Fitness, Time, TimeDiff};
 
 use std::collections::HashMap;
 
@@ -169,7 +169,7 @@ impl Model {
             .collect::<Vec<Capacity>>();
 
         let p_delays = (0..self.passengers.len())
-            .map(|_| self.t_max as i32)
+            .map(|_| self.t_max as TimeDiff)
             .collect();
 
         State::new(

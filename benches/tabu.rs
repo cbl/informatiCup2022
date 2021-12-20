@@ -7,7 +7,7 @@ use rstrain::tabu::TabuSearch;
 use test::Bencher;
 
 #[bench]
-fn tabu_list(b: &mut Bencher) {
+fn search(b: &mut Bencher) {
     let model = Model::new_for_bench();
     let mut tabu = TabuSearch::new(0, 1000, false);
 

@@ -33,53 +33,51 @@ impl TabuSearch {
         }
     }
 
-    fn find_neighbour(&mut self, state: &State, model: &Model) -> State {
+    fn find_neighbour(&mut self, state: &mut State, model: &Model) {
         let mut rnd = rand::thread_rng();
 
         // list of possible states
         #[warn(unused_assignments)]
         let mut moves: Vec<Move> = vec![];
+        let mut best_move: Option<Move> = None;
 
         // the best neighbour
-        let mut neighbour = state.clone();
-
-        // null state
-        #[warn(unused_assignments)]
-        let mut null: State = neighbour.clone();
-
-        // the next neighbour that is being checked
-        let mut next: State;
+        let mut best_fitness: Fitness = Fitness::MAX;
 
         for t_id in 0..model.trains.len() {
-            moves = neighbour.get_moves(t_id, model);
+            moves = state.get_moves(t_id, model);
 
             if moves.is_empty() {
                 continue;
             }
 
-            null = neighbour.clone();
+            best_move = None;
+            best_fitness = state.fitness(model);
 
             moves.shuffle(&mut rnd);
 
             // find neighbour with best cost that is not tabu
-            for m in &moves[..std::cmp::min(MAX_MOVES, moves.len() - 1)] {
-                next = null.clone();
-                next.push(*m, model);
+            for &m in &moves[..std::cmp::min(MAX_MOVES, moves.len() - 1)] {
+                // for m in moves.into_iter() {
+                state.push(m, model);
 
-                if next.fitness(model) < neighbour.fitness(model)
-                    && !self.tabu.contains(&hash64(&next))
-                {
-                    neighbour = next.clone();
+                if state.fitness(model) < best_fitness && !self.tabu.contains(&hash64(&state)) {
+                    best_fitness = state.fitness(model);
+                    best_move = Some(m);
                 }
+
+                state.pop(model);
 
                 self.checked_moves += 1;
             }
 
-            // add to tabu list
-            self.add_tabu_state(&neighbour);
-        }
+            if let Some(m) = best_move {
+                state.push(m, model);
+            }
 
-        neighbour
+            // add to tabu list
+            self.add_tabu_state(&state);
+        }
     }
 
     fn add_tabu_state(&mut self, state: &State) {
@@ -120,7 +118,7 @@ impl TabuSearch {
             best_fitness = Fitness::MAX;
 
             for _ in start..model.t_max {
-                next = self.find_neighbour(&next, model);
+                self.find_neighbour(&mut next, model);
                 solution.0.push(next.clone());
 
                 if self.track_fitness {
@@ -144,7 +142,7 @@ impl TabuSearch {
                     no_changes += 1;
                 }
 
-                next = next.next_null(model);
+                next.next(model);
             }
 
             // remebering best solution by state fitness leads to finding the
@@ -160,7 +158,8 @@ impl TabuSearch {
             if start == 0 {
                 next = model.initial_state();
             } else {
-                next = solution.0[start - 1].next_null(model);
+                next.clone_from(&solution.0[start - 1]);
+                next.next(model);
             }
 
             solution.0.drain(start..);

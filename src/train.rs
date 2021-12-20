@@ -1,6 +1,7 @@
 use crate::connection::Id as CId;
 use crate::station::Id as SId;
 use crate::types;
+use std::fmt;
 
 pub type Id = types::Id;
 pub type Speed = f64;
@@ -38,6 +39,18 @@ impl Location {
             &Location::Station(s_id) => Some(s_id),
             _ => None,
         }
+    }
+}
+
+impl fmt::Display for Location {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Location::Connection(_, _, _) => fmt.write_str("Connection"),
+            Location::Station(_) => fmt.write_str("Station"),
+            Location::Nothing => fmt.write_str("None"),
+        };
+
+        Ok(())
     }
 }
 
