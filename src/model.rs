@@ -9,8 +9,8 @@ use std::collections::HashMap;
 
 #[derive(Clone)]
 pub struct Path {
-    path: Vec<SId>,
-    distance: Distance,
+    pub path: Vec<SId>,
+    pub distance: Distance,
 }
 
 /// The model struct holds all existing entities and the corresponding meta

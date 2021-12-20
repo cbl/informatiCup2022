@@ -5,6 +5,7 @@ use crate::station::Id as SId;
 use crate::train::{Id as TId, Location as TLocation};
 use crate::types::{Capacity, Fitness, IdSet, Time, TimeDiff};
 
+use itertools::Itertools;
 use std::hash::{Hash, Hasher};
 
 const LAMBDA_DELAY: Fitness = 5.0;
@@ -104,6 +105,8 @@ impl State {
 
         fitness += self.p_delays.iter().filter(|d| **d > 0).sum::<i32>() as Fitness * LAMBDA_DELAY;
 
+        fitness -= 1.0 / (self.t_capacity.clone().into_iter().sum::<Capacity>() as Fitness + 1.0);
+
         // add train to station for all passengers that havent moved yet
         for p_id in self.new_passengers.iter() {
             for (t_id, location) in self.t_location.iter().enumerate() {
@@ -124,32 +127,21 @@ impl State {
         // train locations
         for (t_id, location) in self.t_location.iter().enumerate() {
             if let Some(s_id) = location.next_station() {
-                for p_id in self.t_passengers[t_id].iter() {
-                    // let s = match location {
-                    //     TLocation::Connection(_, _, _) => "connection",
-                    //     TLocation::Station(_) => "station",
-                    //     _ => "",
-                    // };
-                    // println!(
-                    //     "{} -> {} : {} ({})",
-                    //     s_id,
-                    //     model.passengers[*p_id].destination,
-                    //     model.distance(s_id, model.passengers[*p_id].destination),
-                    //     s
-                    // );
+                let destination_diff = self.t_passengers[t_id]
+                    .iter()
+                    .map(|p_id| model.passengers[*p_id].destination)
+                    .unique()
+                    .count()
+                    / model.stations.len();
+
+                fitness -= 1.0 / (destination_diff as Fitness + 1.0);
+
+                for (_, p_a_id) in self.t_passengers[t_id].iter().enumerate() {
                     fitness -= 1.0
                         / (model.normalize_distance(
-                            model.distance(s_id, model.passengers[*p_id].destination),
+                            model.distance(s_id, model.passengers[*p_a_id].destination),
                         ) + 1.0);
-
-                    // println!(
-                    //     "{:.3}",
-                    //     1.0 / (model.normalize_distance(
-                    //         model.distance(s_id, model.passengers[*p_id].destination),
-                    //     ) + 1.0)
-                    // );
-
-                    fitness += model.normalized_arrival(*p_id) * LAMBDA_ARRIVAL;
+                    fitness += model.normalized_arrival(*p_a_id) * LAMBDA_ARRIVAL;
                 }
             }
         }
