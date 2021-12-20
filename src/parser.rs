@@ -68,10 +68,11 @@ pub fn parse(string: &String) -> Model {
                             name: data[0].to_string(),
                             distance: data[3].parse::<Distance>().unwrap(),
                             capacity: data[4].parse::<types::Capacity>().unwrap(),
+                            a: from,
+                            b: to,
                         };
 
-                        connections.insert((from, to), connection.clone());
-                        connections.insert((to, from), connection);
+                        connections.push(connection);
                     });
             }
             "Trains" => {
@@ -126,7 +127,7 @@ pub fn parse(string: &String) -> Model {
                             name: data[0].to_string(),
                             start: station_ids[&data[1]],
                             destination: station_ids[&data[2]],
-                            size: data[3].parse::<i32>().unwrap(),
+                            size: data[3].parse::<types::Capacity>().unwrap(),
                             arrival: data[4].parse::<usize>().unwrap(),
                         };
 

@@ -50,15 +50,12 @@ impl Move {
                 )
             }
             Move::Depart(t_id, s_id, c_id) => {
-                if let Some(connection) = model.connections.get(c_id) {
-                    return format!(
-                        "Depart {} to {} from {}",
-                        model.trains[*t_id].name, connection.name, model.stations[*s_id].name,
-                    )
-                    .to_owned();
-                } else {
-                    return "".to_owned();
-                }
+                format!(
+                    "Depart {} to {} via {}",
+                    model.trains[*t_id].name,
+                    model.stations[*s_id].name,
+                    model.connections[*c_id].name,
+                )
             }
             Move::TrainStart(t_id, s_id) => {
                 format!(

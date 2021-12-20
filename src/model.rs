@@ -1,9 +1,9 @@
-use crate::connection::{Connections, Distance, Id as CId, Name as CName};
+use crate::connection::{Connection, Connections, Distance, Id as CId};
 use crate::passenger::{Id as PId, Location as PLocation, Passenger};
 use crate::state::State;
 use crate::station::{Id as SId, Station};
-use crate::train::{Location as TLocation, Train};
-use crate::types::{Capacity, Time};
+use crate::train::{Location as TLocation, StartStation, Train};
+use crate::types::{Capacity, Fitness, Time};
 
 use std::collections::HashMap;
 
@@ -21,7 +21,8 @@ pub struct Model {
     pub connections: Connections,
     pub trains: Vec<Train>,
     pub passengers: Vec<Passenger>,
-    pub paths: HashMap<CId, Path>,
+    pub station_connections: Vec<Vec<CId>>,
+    pub paths: HashMap<(SId, SId), Path>,
     pub max_distance: Distance,
     pub max_arrival: Time,
     pub t_max: Time,
@@ -35,8 +36,6 @@ impl Model {
         trains: Vec<Train>,
         passengers: Vec<Passenger>,
     ) -> Model {
-        let (paths, max_distance) = shortest_paths(&stations, &connections);
-
         let mut max_arrival = 0;
 
         for p in &passengers {
@@ -45,11 +44,21 @@ impl Model {
             }
         }
 
+        let mut station_connections: Vec<Vec<CId>> = stations.iter().map(|_| vec![]).collect();
+
+        for (c_id, connection) in connections.clone().into_iter().enumerate() {
+            station_connections[connection.a].push(c_id);
+            station_connections[connection.b].push(c_id);
+        }
+
+        let (paths, max_distance) = shortest_paths(&stations, &connections);
+
         Model {
             stations,
             connections,
             trains,
             passengers,
+            station_connections,
             paths,
             max_distance,
             max_arrival,
@@ -57,22 +66,59 @@ impl Model {
         }
     }
 
-    pub fn normalize_distance(&self, d: Distance) -> f64 {
-        d / self.max_distance
+    pub fn new_for_bench() -> Model {
+        let stations = (0..10)
+            .map(|i| Station {
+                name: format!("S{}", i),
+                capacity: 3,
+            })
+            .collect();
+
+        let trains = (0..10)
+            .map(|i| Train {
+                name: format!("T{}", i),
+                start: StartStation::Station(i),
+                capacity: 10,
+                speed: 1.0,
+            })
+            .collect();
+
+        let passengers = (0..9)
+            .map(|i| Passenger {
+                name: format!("P{}", i),
+                start: i,
+                destination: i + 1,
+                size: 2,
+                arrival: 10,
+            })
+            .collect();
+
+        let connections = (0..9)
+            .map(|i| Connection {
+                name: format!("L{}", i),
+                distance: 2.0,
+                capacity: 3,
+                a: i,
+                b: i + 1,
+            })
+            .collect();
+
+        Model::new(stations, connections, trains, passengers)
     }
 
-    pub fn normalized_arrival(&self, p_id: PId) -> f64 {
-        self.passengers[p_id].arrival as f64 / self.max_arrival as f64
+    pub fn normalize_distance(&self, d: Distance) -> Fitness {
+        d as Fitness / self.max_distance as Fitness
     }
 
-    pub fn get_destination(&self, s: SId, c: CId) -> Option<SId> {
-        if c.0 == s {
-            return Some(c.1);
-        } else if c.1 == s {
-            return Some(c.0);
+    pub fn normalized_arrival(&self, p_id: PId) -> Fitness {
+        self.passengers[p_id].arrival as Fitness / self.max_arrival as Fitness
+    }
+
+    pub fn get_destination(&self, s: SId, c: CId) -> SId {
+        if self.connections[c].a == s {
+            return self.connections[c].b;
         }
-
-        None
+        self.connections[c].a
     }
 
     pub fn distance(&self, a: SId, b: SId) -> f64 {
@@ -81,7 +127,7 @@ impl Model {
 
     /// Gets the initial state from the model.
     pub fn initial_state(&self) -> State {
-        let s_capacity: Vec<Capacity> = self
+        let mut s_capacity: Vec<Capacity> = self
             .stations
             .clone()
             .into_iter()
@@ -92,7 +138,13 @@ impl Model {
             .trains
             .clone()
             .into_iter()
-            .map(|train| train.capacity)
+            .map(|train| {
+                if let StartStation::Station(s_id) = train.start {
+                    s_capacity[s_id] -= 1;
+                }
+
+                train.capacity
+            })
             .collect::<Vec<Capacity>>();
 
         let t_location = self
@@ -113,8 +165,8 @@ impl Model {
             .connections
             .clone()
             .into_iter()
-            .map(|(_, connection)| (connection.name, connection.capacity))
-            .collect::<HashMap<CName, Capacity>>();
+            .map(|connection| connection.capacity)
+            .collect::<Vec<Capacity>>();
 
         let p_delays = (0..self.passengers.len())
             .map(|_| self.t_max as i32)
@@ -135,28 +187,31 @@ impl Model {
 fn shortest_paths(
     stations: &Vec<Station>,
     connections: &Connections,
-) -> (HashMap<CId, Path>, Distance) {
+) -> (HashMap<(SId, SId), Path>, Distance) {
     let mut paths = HashMap::new();
     let mut max_distance: Distance = Distance::MIN;
-    let distances: Vec<Vec<Distance>> = (0..stations.len())
-        .map(|a| {
-            (0..stations.len())
-                .map(|b| {
-                    if let Some(c) = connections.get(&(a, b)) {
-                        return c.distance;
-                    } else {
-                        return 0.0;
-                    }
-                })
-                .collect()
-        })
+    let mut distances: Vec<Vec<Distance>> = (0..stations.len())
+        .map(|_| (0..stations.len()).map(|_| 0.0).collect())
         .collect();
+
+    for c in connections {
+        distances[c.a][c.b] = c.distance;
+        distances[c.b][c.a] = c.distance;
+    }
 
     let edge_list: Vec<Vec<SId>> = (0..stations.len())
         .map(|s_id| {
             connections
                 .iter()
-                .filter_map(|((a, b), _)| if *a == s_id { return Some(*b) } else { None })
+                .filter_map(|connection| {
+                    if connection.a == s_id {
+                        return Some(connection.b);
+                    } else if connection.b == s_id {
+                        return Some(connection.a);
+                    }
+
+                    None
+                })
                 .collect()
         })
         .collect();

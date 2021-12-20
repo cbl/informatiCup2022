@@ -1,28 +1,27 @@
-use crate::connection::Name as CName;
 use crate::model::Model;
 use crate::move_::Move;
 use crate::passenger::{Id as PId, Location as PLocation};
 use crate::station::Id as SId;
 use crate::train::{Id as TId, Location as TLocation};
-use crate::types::{Capacity, Fitness, Time, TimeDiff};
-use std::collections::HashMap;
+use crate::types::{Capacity, Fitness, IdSet, Time, TimeDiff};
+
 use std::hash::{Hash, Hasher};
 
-const LAMBDA_DELAY: f64 = 5.0;
-const LAMBDA_NEW_PASSENGERS: f64 = 0.001;
-const LAMBDA_ARRIVAL: f64 = 0.45;
+const LAMBDA_DELAY: Fitness = 5.0;
+const LAMBDA_NEW_PASSENGERS: Fitness = 0.001;
+const LAMBDA_ARRIVAL: Fitness = 0.45;
 
 #[derive(Clone, PartialEq)]
 pub struct State {
     pub t: Time,
     pub s_capacity: Vec<Capacity>,
-    pub c_capacity: HashMap<CName, Capacity>,
+    pub c_capacity: Vec<Capacity>,
     pub t_capacity: Vec<Capacity>,
     pub t_location: Vec<TLocation>,
     pub p_location: Vec<PLocation>,
-    pub t_passengers: Vec<Vec<PId>>,
-    pub s_passengers: Vec<Vec<PId>>,
-    pub p_arrived: Vec<PId>,
+    pub t_passengers: Vec<IdSet>,
+    pub s_passengers: Vec<IdSet>,
+    pub p_arrived: IdSet,
     pub p_delays: Vec<TimeDiff>,
     pub new_passengers: Vec<PId>,
     pub moves: Vec<Move>,
@@ -34,7 +33,7 @@ impl State {
     pub fn new(
         t: Time,
         s_capacity: Vec<Capacity>,
-        c_capacity: HashMap<CName, Capacity>,
+        c_capacity: Vec<Capacity>,
         t_capacity: Vec<Capacity>,
         t_location: Vec<TLocation>,
         p_location: Vec<PLocation>,
@@ -43,7 +42,7 @@ impl State {
         let t_len = t_location.len();
         let s_len = s_capacity.len();
         let p_len = p_location.len();
-        let s_passengers: Vec<Vec<PId>> = (0..s_len)
+        let s_passengers: Vec<IdSet> = (0..s_len)
             .map(|s_id| {
                 p_location
                     .clone()
@@ -65,13 +64,17 @@ impl State {
             t_capacity,
             t_location,
             p_location,
-            t_passengers: (0..t_len).map(|_| vec![]).collect(),
+            t_passengers: (0..t_len).map(|_| IdSet::new()).collect(),
             s_passengers,
-            p_arrived: vec![],
+            p_arrived: IdSet::new(),
             moves: vec![],
             p_delays,
             new_passengers: (0..p_len).collect(),
         }
+    }
+
+    pub fn has_station_overload(&self) -> bool {
+        self.s_capacity.iter().filter(|&c| *c < 0).count() > 0
     }
 
     pub fn fitness(&self, model: &Model) -> Fitness {
@@ -84,8 +87,11 @@ impl State {
         //     .map(|x| x.len() as Fitness)
         //     .sum::<Fitness>();
 
+        // station capacity
+        fitness += 1.0 / (self.s_capacity.iter().sum::<Capacity>() as Fitness + 1.0) * 0.005;
+
         // arrived passengers
-        // fitness += (self.p_location.len() - self.p_arrived.len()) as Fitness * 2.0;
+        fitness += (self.p_location.len() - self.p_arrived.len()) as Fitness * 2.0;
 
         // delays
         fitness += self
@@ -95,7 +101,7 @@ impl State {
             .sum::<Fitness>()
             * 0.5;
 
-        fitness += self.p_delays.iter().filter(|d| **d > 0).sum::<i32>() as f64 * LAMBDA_DELAY;
+        fitness += self.p_delays.iter().filter(|d| **d > 0).sum::<i32>() as Fitness * LAMBDA_DELAY;
 
         // add train to station for all passengers that havent moved yet
         for p_id in self.new_passengers.iter() {
@@ -131,11 +137,6 @@ impl State {
         fitness
     }
 
-    /// Gets a list of the passengers that have arrived.
-    pub fn arrived_passengers(&self) -> Vec<PId> {
-        self.p_arrived.clone()
-    }
-
     pub fn next_null(&self, model: &Model) -> State {
         let mut state = self.clone();
 
@@ -150,18 +151,15 @@ impl State {
 
                 // progress in percentage
                 let p = ((state.t - *t_start) as f64 * model.trains[t_id].speed)
-                    / model.connections[c_id].distance;
+                    / model.connections[*c_id].distance;
 
                 if p >= 1.0 {
                     // todo: store arrived trains?
                     state.t_location[t_id] = TLocation::Station(*s_id);
                     // decrease station capacity
-                    state.s_capacity[*s_id] -= 1;
+                    state.s_capacity[*s_id] -= 2;
                     // increase connection capacity
-                    *state
-                        .c_capacity
-                        .get_mut(&model.connections[&c_id].name)
-                        .unwrap() += 1;
+                    state.c_capacity[*c_id] += 1;
                 }
             }
         }
@@ -213,23 +211,10 @@ impl State {
     }
 
     pub fn departments(&self, t_id: TId, s_id: SId, model: &Model) -> Vec<Move> {
-        self.c_capacity
+        model.station_connections[s_id]
             .iter()
-            .filter_map(|(c_name, &capacity)| {
-                if capacity > 0 {
-                    if let Some((&c, _)) = model
-                        .connections
-                        .iter()
-                        .find(|(c_id, connection)| c_id.0 == s_id && connection.name == *c_name)
-                    {
-                        return Some(Move::Depart(t_id, s_id, c));
-                    } else {
-                        return None;
-                    }
-                } else {
-                    return None;
-                }
-            })
+            .filter(|&c_id| self.c_capacity[*c_id] > 0)
+            .map(|&c_id| Move::Depart(t_id, model.get_destination(s_id, c_id), c_id))
             .collect()
     }
 
@@ -249,7 +234,7 @@ impl State {
     }
 
     /// Make move and apply the corresponding changes to the state.
-    pub fn make_move(&mut self, m: Move, model: &Model) {
+    pub fn push(&mut self, m: Move, model: &Model) {
         self.moves.push(m);
 
         match m {
@@ -261,13 +246,9 @@ impl State {
                 self.p_location[p_id] = PLocation::Train(t_id);
 
                 // remember train passengers
-                self.t_passengers[t_id].push(p_id);
+                self.t_passengers[t_id].insert(p_id);
                 // forget station passenger
-                let index = self.s_passengers[s_id]
-                    .iter()
-                    .position(|p| *p == p_id)
-                    .unwrap();
-                self.s_passengers[s_id].remove(index);
+                self.s_passengers[s_id].remove(&p_id);
 
                 // remove new passenger
                 let index = self.new_passengers.iter().position(|p| *p == p_id).unwrap();
@@ -280,34 +261,18 @@ impl State {
                 // set passenger location
                 if s_id == model.passengers[p_id].destination {
                     self.p_location[p_id] = PLocation::Arrived;
-                    self.p_arrived.push(p_id);
+                    self.p_arrived.insert(p_id);
                     self.p_delays[p_id] = self.t as i32 - model.passengers[p_id].arrival as i32;
                 } else {
                     self.p_location[p_id] = PLocation::Station(s_id);
                 }
 
-                // forget train passenger
-                let index = self.t_passengers[t_id]
-                    .iter()
-                    .position(|p| *p == p_id)
-                    .unwrap();
-                self.t_passengers[t_id].remove(index);
+                self.t_passengers[t_id].remove(&p_id);
             }
             Move::Depart(t_id, s_id, c_id) => {
-                // set train location
-                // todo: check if 0 is right
-                if let Some(destination) = model.get_destination(s_id, c_id) {
-                    self.t_location[t_id] = TLocation::Connection(c_id, destination, self.t);
-                }
-
-                // increase station capacity
+                self.t_location[t_id] = TLocation::Connection(c_id, s_id, self.t);
                 self.s_capacity[s_id] += 1;
-
-                // decrease connection capacity
-                *self
-                    .c_capacity
-                    .get_mut(&model.connections[&c_id].name)
-                    .unwrap() -= 1;
+                self.c_capacity[c_id] -= 1;
             }
             Move::TrainStart(t, s) => {
                 self.s_capacity[s] -= 1;
@@ -339,11 +304,9 @@ impl State {
 impl Hash for State {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.t.hash(state);
-        self.s_capacity.hash(state);
-        for elt in self.c_capacity.clone() {
-            elt.hash(state)
-        }
-        self.t_capacity.hash(state);
+        // self.s_capacity.hash(state);
+        // self.c_capacity.hash(state);
+        // self.t_capacity.hash(state);
         self.t_location.hash(state);
         self.p_location.hash(state);
         self.moves.hash(state);

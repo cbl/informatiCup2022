@@ -4,27 +4,38 @@ use crate::solution::Solution;
 use crate::state::State;
 use crate::types::Fitness;
 use fxhash::hash64;
+use linked_hash_set::LinkedHashSet;
+use rand::seq::SliceRandom;
 use rand::Rng;
 use std::time::Instant;
 
 const NO_CHANGES_MAX: i32 = 15;
+const MAX_MOVES: usize = 75;
 
 pub struct TabuSearch {
-    tabu: Vec<u64>,
+    tabu: LinkedHashSet<u64>,
     max_millis: u128,
     tabu_size: usize,
+    track_fitness: bool,
+    pub fitness: Vec<Fitness>,
+    pub checked_moves: usize,
 }
 
 impl TabuSearch {
-    pub fn new(max_millis: u128, tabu_size: usize) -> TabuSearch {
+    pub fn new(max_millis: u128, tabu_size: usize, track_fitness: bool) -> TabuSearch {
         TabuSearch {
-            tabu: vec![],
+            tabu: LinkedHashSet::new(),
+            fitness: vec![],
             max_millis,
             tabu_size,
+            track_fitness,
+            checked_moves: 0,
         }
     }
 
     fn find_neighbour(&mut self, state: &State, model: &Model) -> State {
+        let mut rnd = rand::thread_rng();
+
         // list of possible states
         #[warn(unused_assignments)]
         let mut moves: Vec<Move> = vec![];
@@ -48,22 +59,20 @@ impl TabuSearch {
 
             null = neighbour.clone();
 
+            moves.shuffle(&mut rnd);
+
             // find neighbour with best cost that is not tabu
-            for m in moves.iter() {
+            for m in &moves[..std::cmp::min(MAX_MOVES, moves.len() - 1)] {
                 next = null.clone();
-                next.make_move(*m, model);
+                next.push(*m, model);
 
-                if self.tabu.contains(&hash64(&next)) {
-                    continue;
-                }
-
-                // println!("{} ({})", m.to_string(model), next.fitness(model));
-                // println!("arrived: {:?}", next.p_arrived);
-                // println!("delays: {:?}", next.p_delays);
-
-                if next.fitness(model) <= neighbour.fitness(model) {
+                if next.fitness(model) < neighbour.fitness(model)
+                    && !self.tabu.contains(&hash64(&next))
+                {
                     neighbour = next.clone();
                 }
+
+                self.checked_moves += 1;
             }
 
             // add to tabu list
@@ -74,10 +83,11 @@ impl TabuSearch {
     }
 
     fn add_tabu_state(&mut self, state: &State) {
-        self.tabu.push(hash64(state));
+        self.tabu.insert(hash64(state));
 
         if self.tabu.len() > self.tabu_size {
-            self.tabu.pop();
+            self.tabu.pop_back();
+            // self.tabu.pop();
         }
     }
 
@@ -93,6 +103,7 @@ impl TabuSearch {
 
         // the best solution
         let mut best_solution: Solution = Solution::new();
+        let mut min_delay = Fitness::MAX;
 
         // the current state
         let mut next: State = model.initial_state();
@@ -110,15 +121,22 @@ impl TabuSearch {
 
             for _ in start..model.t_max {
                 next = self.find_neighbour(&next, model);
-
                 solution.0.push(next.clone());
 
-                if next.arrived_passengers().len() == model.passengers.len() {
+                if self.track_fitness {
+                    if solution.fitness() < min_delay {
+                        min_delay = solution.fitness();
+                    }
+                    self.fitness.push(min_delay);
+                }
+
+                if next.p_arrived.len() == model.passengers.len() {
                     break;
                 }
 
                 if next.fitness(model) < best_fitness {
                     best_fitness = next.fitness(model);
+
                     no_changes = 0;
                 } else if no_changes > NO_CHANGES_MAX {
                     break;
@@ -128,8 +146,6 @@ impl TabuSearch {
 
                 next = next.next_null(model);
             }
-
-            // std::process::exit(1);
 
             // remebering best solution by state fitness leads to finding the
             // best solution faster than just checking the solution fitness.

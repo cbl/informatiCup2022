@@ -1,6 +1,7 @@
 use clap::{App, Arg};
 use rstrain::debug::debug;
 use rstrain::parser::parse;
+use rstrain::plotter::Plotter;
 use rstrain::tabu::TabuSearch;
 use std::cmp;
 
@@ -38,6 +39,13 @@ fn main() {
                 .long("t-max")
                 .takes_value(true)
                 .help("The latest time, increase when a solution with a total delay of 0 cannot be found, default value is the latest arrival time of all passengers"),
+        )
+        .arg(
+            Arg::with_name("PLOT")
+                .short("p")
+                .long("plot")
+                .takes_value(false)
+                .help("Plots the fitness progress"),
         )
         .arg(
             Arg::with_name("INPUT")
@@ -88,13 +96,18 @@ fn main() {
         }
     };
 
-    let mut tabu = TabuSearch::new(max_millis, tabu_size);
+    let mut tabu = TabuSearch::new(max_millis, tabu_size, matches.is_present("PLOT"));
 
     let (solution, duration) = tabu.search(&model);
 
     if matches.is_present("DEBUG") {
-        debug(model, solution, duration);
+        debug(model, solution, duration, tabu.checked_moves);
     } else {
         println!("{}", solution.to_string(&model, false));
+    }
+
+    // plot the fitness
+    if matches.is_present("PLOT") {
+        (Plotter { path: "plots" }).plot_fitness(&tabu);
     }
 }

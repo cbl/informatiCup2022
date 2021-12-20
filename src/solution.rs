@@ -3,7 +3,7 @@ use crate::move_::Move;
 use crate::passenger::Id as PId;
 use crate::state::State;
 use crate::train::Location as TLocation;
-use crate::types::{Fitness, TimeDiff};
+use crate::types::{Fitness, IdSet, TimeDiff};
 
 /// The soltion holds a list of states at any given point in
 /// time.
@@ -18,8 +18,8 @@ impl Solution {
     }
 
     /// Gets a list of the arrived passengers.
-    pub fn arrived_passengers(&self) -> Vec<PId> {
-        self.0[self.0.len() - 1].arrived_passengers()
+    pub fn arrived_passengers(&self) -> &IdSet {
+        &self.0[self.0.len() - 1].p_arrived
     }
 
     /// Gets a list of delays for each passenger.
@@ -70,12 +70,18 @@ impl Solution {
                     string.push_str(&format!(
                         "{} on {} at {:.2}%\n",
                         model.trains[t_id].name,
-                        model.connections.get(&c_id).unwrap().name,
+                        model.connections[*c_id].name,
                         ((t - *t_start) as f64 * model.trains[t_id].speed)
-                            / model.connections[c_id].distance
+                            / model.connections[*c_id].distance
                             * 100.0
                     ));
                 }
+                // if let TLocation::Station(s_id) = location {
+                //     string.push_str(&format!(
+                //         "{} on {}\n",
+                //         model.trains[t_id].name, model.stations[*s_id].name,
+                //     ));
+                // }
             }
 
             string.push_str(&"\n");
@@ -102,9 +108,10 @@ impl Solution {
                                 .push_str(&format!("{} Start {}\n", t, model.stations[*s_id].name));
                         }
                         Move::Depart(_, _, c_id) => {
-                            if let Some(connection) = model.connections.get(&c_id) {
-                                string.push_str(&format!("{} Depart {}\n", t, connection.name));
-                            }
+                            string.push_str(&format!(
+                                "{} Depart {}\n",
+                                t, model.connections[*c_id].name
+                            ));
                         }
                         _ => (),
                     }

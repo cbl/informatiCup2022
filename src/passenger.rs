@@ -5,7 +5,7 @@ use crate::types;
 pub type Id = types::Id;
 pub type Speed = f64;
 pub type Capacity = types::Capacity;
-pub type GroupSize = i32;
+pub type GroupSize = Capacity;
 pub type ArrivalTime = types::Time;
 
 #[derive(Clone, PartialEq, Copy, Hash)]

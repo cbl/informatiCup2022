@@ -1,4 +1,5 @@
 use crate::tabu::TabuSearch;
+use crate::types::Fitness;
 use plotters::prelude::*;
 use std::path::Path;
 
@@ -33,7 +34,7 @@ impl Plotter {
         let min = tabu
             .fitness
             .iter()
-            .fold(f64::INFINITY, |a, &b| a.min(b))
+            .fold(Fitness::INFINITY, |a, &b| a.min(b))
             .min(-0.0);
 
         let max = tabu.fitness.iter().fold(0.0, |a, &b| match a > b {
