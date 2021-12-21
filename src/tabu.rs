@@ -2,7 +2,7 @@ use crate::model::Model;
 use crate::move_::Move;
 use crate::solution::Solution;
 use crate::state::State;
-use crate::types::{Fitness, TimeDiff};
+use crate::types::{Fitness, Time, TimeDiff};
 use fxhash::hash64;
 use linked_hash_set::LinkedHashSet;
 use rand::seq::SliceRandom;
@@ -63,7 +63,9 @@ impl TabuSearch {
             for m in moves.into_iter() {
                 state.push(m, model);
 
-                if m.is_gt(&best_move, state, model) && !self.tabu.contains(&hash64(&state)) {
+                // println!("{} ({})", m.to_string(model), hash64(&(m, state.t)));
+
+                if m.is_gt(&best_move, state, model) && !self.tabu.contains(&hash64(state)) {
                     best_move = m;
                 }
 
@@ -78,12 +80,12 @@ impl TabuSearch {
             }
 
             // add to tabu list
-            self.add_tabu_state(&state);
+            self.add_tabu(state);
         }
     }
 
     /// Add state to tabu list
-    fn add_tabu_state(&mut self, state: &State) {
+    fn add_tabu(&mut self, state: &State) {
         self.tabu.insert(hash64(state));
 
         if self.tabu.len() > self.tabu_size {
@@ -137,6 +139,8 @@ impl TabuSearch {
 
                     state.next(model);
                 }
+
+                // std::process::exit(1);
 
                 if solution.fitness() < best_solution.fitness() {
                     best_solution = solution.clone();
