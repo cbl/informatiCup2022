@@ -1,6 +1,5 @@
 use crate::model::Model;
 use crate::move_::Move;
-use crate::passenger::Id as PId;
 use crate::state::State;
 use crate::train::Location as TLocation;
 use crate::types::{Fitness, IdSet, TimeDiff};
@@ -27,34 +26,26 @@ impl Solution {
         self.0[self.0.len() - 1].p_delays.clone()
     }
 
-    /// Gets the fitness of the solution
-    pub fn fitness(&self) -> Fitness {
+    /// Gets the total delays of the solution
+    pub fn fitness(&self) -> TimeDiff {
         let len = self.0.len();
 
         if len == 0 {
-            return Fitness::MAX;
+            return TimeDiff::MAX;
         }
 
         self.0[len - 1]
             .p_delays
             .iter()
             .filter(|d| **d > 0)
-            .sum::<TimeDiff>() as Fitness
-    }
-
-    pub fn state_fitness(&self, model: &Model) -> Fitness {
-        if let Some(state) = self.0.last() {
-            return state.fitness(model);
-        }
-
-        Fitness::MAX
+            .sum::<TimeDiff>()
     }
 
     fn to_string_verbose(&self, model: &Model) -> String {
         let mut string: String = "".to_owned();
 
         self.0.iter().enumerate().for_each(|(t, state)| {
-            string.push_str(&format!("[Time:{}][Fitness:{}]\n", t, state.fitness(model)));
+            string.push_str(&format!("[Time:{}]\n", t));
 
             for m in &state.moves {
                 string.push_str(&m.to_string(model));

@@ -26,14 +26,6 @@ fn get_moves(b: &mut Bencher) {
 }
 
 #[bench]
-fn fitness(b: &mut Bencher) {
-    let model = Model::new_for_bench();
-    let state = model.initial_state();
-
-    b.iter(|| state.fitness(&model));
-}
-
-#[bench]
 fn hash(b: &mut Bencher) {
     let model = Model::new_for_bench();
     let state = model.initial_state();

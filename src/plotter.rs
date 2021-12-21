@@ -1,5 +1,5 @@
 use crate::tabu::TabuSearch;
-use crate::types::Fitness;
+use crate::types::TimeDiff;
 use plotters::prelude::*;
 use std::path::Path;
 
@@ -34,10 +34,10 @@ impl Plotter {
         let min = tabu
             .fitness
             .iter()
-            .fold(Fitness::INFINITY, |a, &b| a.min(b))
-            .min(-0.0);
+            .fold(TimeDiff::MAX, |a, &b| a.min(b))
+            .min(-0);
 
-        let max = tabu.fitness.iter().fold(0.0, |a, &b| match a > b {
+        let max = tabu.fitness.iter().fold(0, |a, &b| match a > b {
             true => a,
             false => b,
         });
@@ -46,7 +46,7 @@ impl Plotter {
             .set_label_area_size(LabelAreaPosition::Left, 50)
             .set_label_area_size(LabelAreaPosition::Bottom, 50)
             .caption("Fitness By Iteration", ("sans-serif", 30))
-            .build_cartesian_2d(-10..(tabu.fitness.len() as i32), (min - 2.0)..(max + 2.0))
+            .build_cartesian_2d(-10..(tabu.fitness.len() as i32), (min - 2)..(max + 2))
             .unwrap();
 
         chart.configure_mesh().draw().unwrap();

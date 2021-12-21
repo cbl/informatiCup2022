@@ -24,7 +24,6 @@ pub struct State {
     pub s_passengers: Vec<IdSet>,
     pub p_arrived: IdSet,
     pub p_delays: Vec<TimeDiff>,
-    pub new_passengers: Vec<PId>,
     pub moves: Vec<Move>,
 }
 
@@ -70,7 +69,6 @@ impl State {
             p_arrived: IdSet::new(),
             moves: vec![],
             p_delays,
-            new_passengers: (0..p_len).collect(),
         }
     }
 
@@ -95,11 +93,7 @@ impl State {
     }
 
     pub fn has_station_overload(&self) -> bool {
-        self.s_capacity.iter().filter(|&c| *c < 0).count() > 0
-    }
-
-    pub fn fitness(&self, model: &Model) -> Fitness {
-        0.0
+        self.s_capacity.iter().any(|&c| c < -5)
     }
 
     pub fn next(&mut self, model: &Model) {
@@ -210,10 +204,6 @@ impl State {
                 self.t_passengers[t_id].insert(p_id);
                 // forget station passenger
                 self.s_passengers[s_id].remove(&p_id);
-
-                // remove new passenger
-                let index = self.new_passengers.iter().position(|p| *p == p_id).unwrap();
-                self.new_passengers.remove(index);
             }
             Move::Detrain((t_id, p_id, s_id)) => {
                 // update train capacity
@@ -251,9 +241,6 @@ impl State {
                     self.p_location[p_id] = PLocation::Station(s_id);
                     self.t_passengers[t_id].remove(&p_id);
                     self.s_passengers[s_id].insert(p_id);
-                    if s_id == model.passengers[p_id].start {
-                        self.new_passengers.push(p_id);
-                    }
                 }
                 Move::Detrain((t_id, p_id, s_id)) => {
                     // update train capacity
@@ -310,9 +297,6 @@ impl State {
 impl Hash for State {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.t.hash(state);
-        // self.s_capacity.hash(state);
-        // self.c_capacity.hash(state);
-        // self.t_capacity.hash(state);
         self.t_location.hash(state);
         self.p_location.hash(state);
         self.moves.hash(state);

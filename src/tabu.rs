@@ -2,23 +2,25 @@ use crate::model::Model;
 use crate::move_::Move;
 use crate::solution::Solution;
 use crate::state::State;
-use crate::types::Fitness;
+use crate::types::{Fitness, TimeDiff};
 use fxhash::hash64;
 use linked_hash_set::LinkedHashSet;
 use rand::seq::SliceRandom;
 use rand::Rng;
+use std::ops::Range;
 use std::time::Instant;
 
-const STEPS_PER_TEMP: usize = 5;
-const COOLING_FACTOR: f64 = 0.95;
+const STEPS_PER_TEMP: usize = 10;
+const COOLING_FACTOR: f64 = 0.96;
 const INITIAL_TEMP: f64 = 0.999;
+const RANGE: f64 = 0.3;
 
 pub struct TabuSearch {
     tabu: LinkedHashSet<u64>,
     max_millis: u128,
     tabu_size: usize,
     track_fitness: bool,
-    pub fitness: Vec<Fitness>,
+    pub fitness: Vec<TimeDiff>,
     pub checked_moves: usize,
 }
 
@@ -34,12 +36,14 @@ impl TabuSearch {
         }
     }
 
+    /// Find the best neighbour for the given state
     fn find_neighbour(&mut self, state: &mut State, model: &Model) {
         let mut rnd = rand::thread_rng();
 
         // list of possible states
-        #[warn(unused_assignments)]
         let mut moves: Vec<Move> = vec![];
+
+        // the best move
         let mut best_move: Move = Move::None;
 
         for t_id in 0..model.trains.len() {
@@ -78,18 +82,21 @@ impl TabuSearch {
         }
     }
 
+    /// Add state to tabu list
     fn add_tabu_state(&mut self, state: &State) {
         self.tabu.insert(hash64(state));
 
         if self.tabu.len() > self.tabu_size {
             self.tabu.pop_back();
-            // self.tabu.pop();
         }
     }
 
     pub fn search(&mut self, model: &Model) -> (Solution, u128) {
         // random generator
         let mut rnd = rand::thread_rng();
+
+        // the system temperature
+        let mut temperature = INITIAL_TEMP;
 
         // start system time
         let start_time = Instant::now();
@@ -99,21 +106,19 @@ impl TabuSearch {
 
         // the best solution
         let mut best_solution: Solution = Solution::new();
-        let mut min_delay = Fitness::MAX;
+        let mut min_delay = TimeDiff::MAX;
 
         // the current state
-        let mut next: State = model.initial_state();
+        let mut state: State = model.initial_state();
 
         //
         let mut start: usize = 0;
 
-        let mut temperature = INITIAL_TEMP;
-
-        while best_solution.fitness() > 0.0 {
+        while best_solution.fitness() > 0 {
             for _ in 0..STEPS_PER_TEMP {
                 for _ in start..model.t_max {
-                    self.find_neighbour(&mut next, model);
-                    solution.0.push(next.clone());
+                    self.find_neighbour(&mut state, model);
+                    solution.0.push(state.clone());
 
                     if self.track_fitness {
                         if solution.fitness() < min_delay {
@@ -122,11 +127,15 @@ impl TabuSearch {
                         self.fitness.push(min_delay);
                     }
 
-                    if next.p_arrived.len() == model.passengers.len() {
+                    // if state.has_station_overload() {
+                    //     break;
+                    // }
+
+                    if state.p_arrived.len() == model.passengers.len() {
                         break;
                     }
 
-                    next.next(model);
+                    state.next(model);
                 }
 
                 if solution.fitness() < best_solution.fitness() {
@@ -135,23 +144,14 @@ impl TabuSearch {
                     solution = best_solution.clone();
                 }
 
-                let mid = (solution.0.len() as f64 * (1.0 - temperature));
-                let a = std::cmp::max(0, (mid - solution.0.len() as f64 * 0.01) as usize);
-                let b = std::cmp::min(
-                    solution.0.len(),
-                    (mid + solution.0.len() as f64 * 0.01) as usize,
-                );
-
-                println!("range {}..{} ({}deg)", a, b, temperature,);
-
-                // start = rnd.gen_range(0..solution.0.len());
-                start = rnd.gen_range(a..b);
+                // start = rnd.gen_range(self.get_range(&solution, &temperature));
+                start = rnd.gen_range(0..solution.0.len());
 
                 if start == 0 {
-                    next = model.initial_state();
+                    state = model.initial_state();
                 } else {
-                    next.clone_from(&solution.0[start - 1]);
-                    next.next(model);
+                    state.clone_from(&solution.0[start - 1]);
+                    state.next(model);
                 }
 
                 solution.0.drain(start..);
@@ -165,5 +165,26 @@ impl TabuSearch {
         }
 
         (best_solution, start_time.elapsed().as_millis())
+    }
+
+    fn get_range(&self, solution: &Solution, temperature: &f64) -> Range<usize> {
+        let mid = (solution.0.len() as f64 * (1.0 - temperature));
+        let diff = if solution.0.len() as f64 * RANGE > 5.0 {
+            solution.0.len() as f64 * RANGE
+        } else {
+            5.0
+        };
+        let a = std::cmp::max(0, (mid - diff) as usize);
+        let b = std::cmp::min(solution.0.len(), (mid + diff) as usize);
+
+        println!(
+            "range {}..{} ({}deg) ({}len)",
+            a,
+            b,
+            temperature,
+            solution.0.len()
+        );
+
+        a..b
     }
 }
