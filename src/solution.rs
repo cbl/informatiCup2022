@@ -103,11 +103,11 @@ impl Solution {
             self.0.iter().enumerate().for_each(|(t, state)| {
                 if let Some(m) = state.train_move(t_id) {
                     match m {
-                        Move::TrainStart(_, s_id) => {
+                        Move::TrainStart((_, s_id)) => {
                             string
                                 .push_str(&format!("{} Start {}\n", t, model.stations[*s_id].name));
                         }
-                        Move::Depart(_, _, c_id) => {
+                        Move::Depart((_, _, c_id)) => {
                             string.push_str(&format!(
                                 "{} Depart {}\n",
                                 t, model.connections[*c_id].name
@@ -131,13 +131,13 @@ impl Solution {
                 self.0.iter().enumerate().for_each(|(t, state)| {
                     if let Some(m) = state.passenger_move(p_id) {
                         match m {
-                            Move::Board(t_id, _, _) => {
+                            Move::Board((t_id, _, _)) => {
                                 string.push_str(&format!(
                                     "{} Board {}\n",
                                     t, model.trains[*t_id].name
                                 ));
                             }
-                            Move::Detrain(_, _, _) => {
+                            Move::Detrain((_, _, _)) => {
                                 string.push_str(&format!("{} Detrain\n", t));
                             }
                             _ => (),

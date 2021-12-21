@@ -25,6 +25,7 @@ pub struct Model {
     pub paths: HashMap<(SId, SId), Path>,
     pub max_distance: Distance,
     pub max_arrival: Time,
+    pub max_train_capacity: Capacity,
     pub t_max: Time,
 }
 
@@ -52,6 +53,7 @@ impl Model {
         }
 
         let (paths, max_distance) = shortest_paths(&stations, &connections);
+        let max_train_capacity = trains.clone().iter().map(|t| t.capacity).max().unwrap();
 
         Model {
             stations,
@@ -61,6 +63,7 @@ impl Model {
             station_connections,
             paths,
             max_distance,
+            max_train_capacity,
             max_arrival,
             t_max: max_arrival,
         }
@@ -112,6 +115,10 @@ impl Model {
 
     pub fn normalized_arrival(&self, p_id: PId) -> Fitness {
         self.passengers[p_id].arrival as Fitness / self.max_arrival as Fitness
+    }
+
+    pub fn normalize_train_capacity(&self, c: Fitness) -> Fitness {
+        c / self.max_train_capacity as Fitness
     }
 
     pub fn get_destination(&self, s: SId, c: CId) -> SId {

@@ -9,8 +9,9 @@ use rand::seq::SliceRandom;
 use rand::Rng;
 use std::time::Instant;
 
-const NO_CHANGES_MAX: i32 = 15;
-const MAX_MOVES: usize = 75;
+const STEPS_PER_TEMP: usize = 5;
+const COOLING_FACTOR: f64 = 0.95;
+const INITIAL_TEMP: f64 = 0.999;
 
 pub struct TabuSearch {
     tabu: LinkedHashSet<u64>,
@@ -39,10 +40,7 @@ impl TabuSearch {
         // list of possible states
         #[warn(unused_assignments)]
         let mut moves: Vec<Move> = vec![];
-        let mut best_move: Option<Move> = None;
-
-        // the best neighbour
-        let mut best_fitness: Fitness = Fitness::MAX;
+        let mut best_move: Move = Move::None;
 
         for t_id in 0..model.trains.len() {
             moves = state.get_moves(t_id, model);
@@ -51,19 +49,18 @@ impl TabuSearch {
                 continue;
             }
 
-            best_move = None;
-            best_fitness = state.fitness(model);
+            best_move = Move::None;
 
+            // shuffling the moves somehow leads to finding good solutions much
+            // faster...
             moves.shuffle(&mut rnd);
 
             // find neighbour with best cost that is not tabu
-            for &m in &moves[..std::cmp::min(MAX_MOVES, moves.len() - 1)] {
-                // for m in moves.into_iter() {
+            for m in moves.into_iter() {
                 state.push(m, model);
 
-                if state.fitness(model) < best_fitness && !self.tabu.contains(&hash64(&state)) {
-                    best_fitness = state.fitness(model);
-                    best_move = Some(m);
+                if m.is_gt(&best_move, state, model) && !self.tabu.contains(&hash64(&state)) {
+                    best_move = m;
                 }
 
                 state.pop(model);
@@ -71,8 +68,9 @@ impl TabuSearch {
                 self.checked_moves += 1;
             }
 
-            if let Some(m) = best_move {
-                state.push(m, model);
+            if let Move::None = best_move {
+            } else {
+                state.push(best_move, model);
             }
 
             // add to tabu list
@@ -109,64 +107,61 @@ impl TabuSearch {
         //
         let mut start: usize = 0;
 
-        #[warn(unused_assignments)]
-        let mut best_fitness = Fitness::MAX;
-
-        let mut no_changes = 0;
+        let mut temperature = INITIAL_TEMP;
 
         while best_solution.fitness() > 0.0 {
-            best_fitness = Fitness::MAX;
+            for _ in 0..STEPS_PER_TEMP {
+                for _ in start..model.t_max {
+                    self.find_neighbour(&mut next, model);
+                    solution.0.push(next.clone());
 
-            for _ in start..model.t_max {
-                self.find_neighbour(&mut next, model);
-                solution.0.push(next.clone());
-
-                if self.track_fitness {
-                    if solution.fitness() < min_delay {
-                        min_delay = solution.fitness();
+                    if self.track_fitness {
+                        if solution.fitness() < min_delay {
+                            min_delay = solution.fitness();
+                        }
+                        self.fitness.push(min_delay);
                     }
-                    self.fitness.push(min_delay);
+
+                    if next.p_arrived.len() == model.passengers.len() {
+                        break;
+                    }
+
+                    next.next(model);
                 }
 
-                if next.p_arrived.len() == model.passengers.len() {
-                    break;
-                }
-
-                if next.fitness(model) < best_fitness {
-                    best_fitness = next.fitness(model);
-
-                    no_changes = 0;
-                } else if no_changes > NO_CHANGES_MAX {
-                    break;
+                if solution.fitness() < best_solution.fitness() {
+                    best_solution = solution.clone();
                 } else {
-                    no_changes += 1;
+                    solution = best_solution.clone();
                 }
 
-                next.next(model);
+                let mid = (solution.0.len() as f64 * (1.0 - temperature));
+                let a = std::cmp::max(0, (mid - solution.0.len() as f64 * 0.01) as usize);
+                let b = std::cmp::min(
+                    solution.0.len(),
+                    (mid + solution.0.len() as f64 * 0.01) as usize,
+                );
+
+                println!("range {}..{} ({}deg)", a, b, temperature,);
+
+                // start = rnd.gen_range(0..solution.0.len());
+                start = rnd.gen_range(a..b);
+
+                if start == 0 {
+                    next = model.initial_state();
+                } else {
+                    next.clone_from(&solution.0[start - 1]);
+                    next.next(model);
+                }
+
+                solution.0.drain(start..);
             }
-
-            // remebering best solution by state fitness leads to finding the
-            // best solution faster than just checking the solution fitness.
-            if solution.state_fitness(model) < best_solution.state_fitness(model) {
-                best_solution = solution.clone();
-            } else {
-                solution = best_solution.clone();
-            }
-
-            start = rnd.gen_range(0..solution.0.len());
-
-            if start == 0 {
-                next = model.initial_state();
-            } else {
-                next.clone_from(&solution.0[start - 1]);
-                next.next(model);
-            }
-
-            solution.0.drain(start..);
 
             if self.max_millis < start_time.elapsed().as_millis() {
                 break;
             }
+
+            temperature *= COOLING_FACTOR;
         }
 
         (best_solution, start_time.elapsed().as_millis())
