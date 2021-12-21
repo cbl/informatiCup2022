@@ -4,6 +4,7 @@ extern crate test;
 
 use fxhash::hash64;
 use rstrain::model::Model;
+use rstrain::move_::Move;
 use test::Bencher;
 
 #[bench]
@@ -37,12 +38,14 @@ fn hash(b: &mut Bencher) {
 fn push(b: &mut Bencher) {
     let model = Model::new_for_bench();
     let mut state = model.initial_state();
+    let moves: Vec<Move> = (0..model.trains.len())
+        .map(|t_id| state.get_moves(t_id, &model))
+        .flatten()
+        .collect();
 
     b.iter(|| {
-        for t_id in 0..model.trains.len() {
-            for m in state.get_moves(t_id, &model) {
-                state.push(m, &model);
-            }
+        for m in moves.iter() {
+            state.push(*m, &model);
         }
     });
 }

@@ -37,13 +37,7 @@ impl Model {
         trains: Vec<Train>,
         passengers: Vec<Passenger>,
     ) -> Model {
-        let mut max_arrival = 0;
-
-        for p in &passengers {
-            if p.arrival > max_arrival {
-                max_arrival = p.arrival;
-            }
-        }
+        let max_arrival = passengers.iter().map(|p| p.arrival).max().unwrap();
 
         let mut station_connections: Vec<Vec<CId>> = stations.iter().map(|_| vec![]).collect();
 
