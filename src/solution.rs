@@ -46,6 +46,7 @@ impl Solution {
 
         self.0.iter().enumerate().for_each(|(t, state)| {
             string.push_str(&format!("[Time:{}]\n", t));
+            string.push_str(&format!("s_capacities: {:?}\n", state.s_capacity));
 
             for m in &state.moves {
                 string.push_str(&m.to_string(model));
@@ -94,14 +95,16 @@ impl Solution {
             self.0.iter().enumerate().for_each(|(t, state)| {
                 if let Some(m) = state.train_move(t_id) {
                     match m {
-                        Move::TrainStart((_, s_id)) => {
-                            string
-                                .push_str(&format!("{} Start {}\n", t, model.stations[*s_id].name));
+                        Move::TrainStart(t_start) => {
+                            string.push_str(&format!(
+                                "{} Start {}\n",
+                                t, model.stations[t_start.s_id].name
+                            ));
                         }
-                        Move::Depart((_, _, c_id)) => {
+                        Move::Depart(depart) => {
                             string.push_str(&format!(
                                 "{} Depart {}\n",
-                                t, model.connections[*c_id].name
+                                t, model.connections[depart.c_id].name
                             ));
                         }
                         _ => (),
@@ -122,13 +125,13 @@ impl Solution {
                 self.0.iter().enumerate().for_each(|(t, state)| {
                     if let Some(m) = state.passenger_move(p_id) {
                         match m {
-                            Move::Board((t_id, _, _)) => {
+                            Move::Board(board) => {
                                 string.push_str(&format!(
                                     "{} Board {}\n",
-                                    t, model.trains[*t_id].name
+                                    t, model.trains[board.t_id].name
                                 ));
                             }
-                            Move::Detrain((_, _, _)) => {
+                            Move::Detrain(_) => {
                                 string.push_str(&format!("{} Detrain\n", t));
                             }
                             _ => (),

@@ -2,7 +2,7 @@ use crate::connection::{Connection, Connections, Distance, Id as CId};
 use crate::passenger::{Id as PId, Location as PLocation, Passenger};
 use crate::state::State;
 use crate::station::{Id as SId, Station};
-use crate::train::{Location as TLocation, StartStation, Train};
+use crate::train::{Id as TId, Location as TLocation, StartStation, Train};
 use crate::types::{Capacity, Fitness, Time, TimeDiff};
 
 use std::collections::HashMap;
@@ -101,6 +101,10 @@ impl Model {
             .collect();
 
         Model::new(stations, connections, trains, passengers)
+    }
+
+    pub fn train_arrival(&self, t_id: TId, c_id: CId) -> Time {
+        (self.connections[c_id].distance / self.trains[t_id].speed).ceil() as Time
     }
 
     pub fn normalize_distance(&self, d: Distance) -> Fitness {

@@ -1,5 +1,5 @@
 use crate::model::Model;
-use crate::move_::Move;
+use crate::move_::{Move, None};
 use crate::solution::Solution;
 use crate::state::State;
 use crate::types::{Fitness, Time, TimeDiff};
@@ -7,6 +7,7 @@ use fxhash::hash64;
 use linked_hash_set::LinkedHashSet;
 use rand::seq::SliceRandom;
 use rand::Rng;
+use std::cmp::max;
 use std::ops::Range;
 use std::time::Instant;
 
@@ -44,7 +45,7 @@ impl TabuSearch {
         let mut moves: Vec<Move> = vec![];
 
         // the best move
-        let mut best_move: Move = Move::None;
+        let mut best_move: Move = Move::None(None());
 
         for t_id in 0..model.trains.len() {
             moves = state.get_moves(t_id, model);
@@ -53,7 +54,7 @@ impl TabuSearch {
                 continue;
             }
 
-            best_move = Move::None;
+            best_move = Move::None(None());
 
             // shuffling the moves somehow leads to finding good solutions much
             // faster...
@@ -62,8 +63,6 @@ impl TabuSearch {
             // find neighbour with best cost that is not tabu
             for m in moves.into_iter() {
                 state.push(m, model);
-
-                // println!("{} ({})", m.to_string(model), hash64(&(m, state.t)));
 
                 if m.is_gt(&best_move, state, model) && !self.tabu.contains(&hash64(state)) {
                     best_move = m;
@@ -74,7 +73,7 @@ impl TabuSearch {
                 self.checked_moves += 1;
             }
 
-            if let Move::None = best_move {
+            if let Move::None(_) = best_move {
             } else {
                 state.push(best_move, model);
             }
@@ -117,55 +116,56 @@ impl TabuSearch {
         let mut start: usize = 0;
 
         while best_solution.fitness() > 0 {
-            for _ in 0..STEPS_PER_TEMP {
-                for _ in start..model.t_max {
-                    self.find_neighbour(&mut state, model);
-                    solution.0.push(state.clone());
+            while state.t < model.t_max {
+                self.find_neighbour(&mut state, model);
+                solution.0.push(state.clone());
 
-                    if self.track_fitness {
-                        if solution.fitness() < min_delay {
-                            min_delay = solution.fitness();
-                        }
-                        self.fitness.push(min_delay);
-                    }
+                // if self.track_fitness {
+                //     if solution.fitness() < min_delay {
+                //         min_delay = solution.fitness();
+                //     }
+                //     self.fitness.push(min_delay);
+                // }
 
-                    // if state.has_station_overload() {
-                    //     break;
-                    // }
+                state.next(model);
 
-                    if state.p_arrived.len() == model.passengers.len() {
-                        break;
-                    }
-
-                    state.next(model);
+                if state.has_station_overload() {
+                    // go back 2
+                    // let rollback = max(0, solution.0.len() - 2);
+                    // state.clone_from(&solution.0[rollback]);
+                    // solution.0.drain(rollback..);
+                    // continue;
                 }
 
-                // std::process::exit(1);
-
-                if solution.fitness() < best_solution.fitness() {
-                    best_solution = solution.clone();
-                } else {
-                    solution = best_solution.clone();
+                if state.p_arrived.len() == model.passengers.len() {
+                    break;
                 }
-
-                // start = rnd.gen_range(self.get_range(&solution, &temperature));
-                start = rnd.gen_range(0..solution.0.len());
-
-                if start == 0 {
-                    state = model.initial_state();
-                } else {
-                    state.clone_from(&solution.0[start - 1]);
-                    state.next(model);
-                }
-
-                solution.0.drain(start..);
             }
+
+            // return (solution, start_time.elapsed().as_millis());
+            // std::process::exit(1);
+
+            if solution.fitness() < best_solution.fitness() {
+                best_solution = solution.clone();
+            } else {
+                solution = best_solution.clone();
+            }
+
+            // start = rnd.gen_range(self.get_range(&solution, &temperature));
+            start = rnd.gen_range(0..solution.0.len());
+
+            if start == 0 {
+                state = model.initial_state();
+            } else {
+                state.clone_from(&solution.0[start - 1]);
+                state.next(model);
+            }
+
+            solution.0.drain(start..);
 
             if self.max_millis < start_time.elapsed().as_millis() {
                 break;
             }
-
-            temperature *= COOLING_FACTOR;
         }
 
         (best_solution, start_time.elapsed().as_millis())

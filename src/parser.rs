@@ -5,6 +5,7 @@ use crate::station::Station;
 use crate::train::{Speed, StartStation, Train};
 use crate::types;
 use regex::Regex;
+use std::cmp::Ordering;
 use std::collections::HashMap;
 
 pub fn parse(string: &String) -> Model {
@@ -137,6 +138,12 @@ pub fn parse(string: &String) -> Model {
             _ => {}
         };
     }
+
+    // order trains by speed
+    trains.sort_by(|a, b| match a.speed > b.speed {
+        true => Ordering::Less,
+        false => Ordering::Greater,
+    });
 
     Model::new(stations, connections, trains, passengers)
 }
