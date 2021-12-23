@@ -7,7 +7,7 @@ An attempt to solve the railway problem introduced in the [informatiCup2022](htt
 ### Build
 
 ```shell
-cargo run build
+cargo build --release
 ```
 
 ### Check
@@ -19,11 +19,5 @@ cargo check
 ### Run
 
 ```shell
-cargo run "$(<path/to/input/file)"
-```
-
-## Documentation
-
-```shell
-cargo doc --open
+cargo run --release "$(<test-cases/long/input.txt)"
 ```
