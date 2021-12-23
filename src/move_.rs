@@ -8,7 +8,6 @@ use crate::station::Id as SId;
 use crate::train::Id as TId;
 
 pub trait MoveStruct {}
-pub trait BoardTr {}
 
 #[derive(Hash, Clone, PartialEq, Copy)]
 pub struct Board {
@@ -17,8 +16,16 @@ pub struct Board {
     pub s_id: SId,
 }
 impl MoveStruct for Board {}
-impl BoardTr for Board {}
-impl MoveStruct for BoardTr {}
+impl Board {
+    pub fn to_string(&self, model: &Model) -> String {
+        format!(
+            "Board {} to {} from {}",
+            model.passengers[self.p_id].name,
+            model.trains[self.t_id].name,
+            model.stations[self.s_id].name,
+        )
+    }
+}
 
 #[derive(Hash, Clone, PartialEq, Copy)]
 pub struct Detrain {
@@ -27,6 +34,16 @@ pub struct Detrain {
     pub s_id: SId,
 }
 impl MoveStruct for Detrain {}
+impl Detrain {
+    pub fn to_string(&self, model: &Model) -> String {
+        format!(
+            "Detrain {} from {} to {}",
+            model.passengers[self.p_id].name,
+            model.trains[self.t_id].name,
+            model.stations[self.s_id].name,
+        )
+    }
+}
 
 #[derive(Hash, Clone, PartialEq, Copy)]
 pub struct Depart {
@@ -36,6 +53,17 @@ pub struct Depart {
     pub c_id: CId,
 }
 impl MoveStruct for Depart {}
+impl Depart {
+    pub fn to_string(&self, model: &Model) -> String {
+        format!(
+            "Depart {} from {} to {} via {}",
+            model.trains[self.t_id].name,
+            model.stations[self.from].name,
+            model.stations[self.to].name,
+            model.connections[self.c_id].name,
+        )
+    }
+}
 
 #[derive(Hash, Clone, PartialEq, Copy)]
 pub struct Start {
@@ -43,10 +71,23 @@ pub struct Start {
     pub s_id: SId,
 }
 impl MoveStruct for Start {}
+impl Start {
+    pub fn to_string(&self, model: &Model) -> String {
+        format!(
+            "Start {} on {}",
+            model.trains[self.t_id].name, model.stations[self.s_id].name,
+        )
+    }
+}
 
 #[derive(Hash, Clone, PartialEq, Copy)]
 pub struct None();
 impl MoveStruct for None {}
+impl None {
+    pub fn to_string(&self, model: &Model) -> String {
+        "".to_string()
+    }
+}
 
 #[derive(Hash, Clone, PartialEq, Copy)]
 pub enum Move {
@@ -78,52 +119,22 @@ pub enum Move {
 
 impl Move {
     pub fn is_gt(&self, m: &Move, state: &State, model: &Model) -> bool {
+        for rule in &model.rules {
+            if let Result::Some(result) = rule.is_gt(self, m, state, model) {
+                return result;
+            }
+        }
+
         false
-        // cmp_rules!(
-        //     self,
-        //     m,
-        //     state,
-        //     model,
-        //     // rules::station_overload::StationOverload,
-        //     // rules::arrived_passenger::ArrivedPassenger,
-        //     // rules::board_passenger_by_arrival::BoardPassener
-        // )
     }
 
     pub fn to_string(&self, model: &Model) -> String {
         match self {
-            Move::Board(m) => {
-                format!(
-                    "Board {} to {} from {}",
-                    model.passengers[m.p_id].name,
-                    model.trains[m.t_id].name,
-                    model.stations[m.s_id].name,
-                )
-            }
-            Move::Detrain(m) => {
-                format!(
-                    "Detrain {} from {} to {}",
-                    model.passengers[m.p_id].name,
-                    model.trains[m.t_id].name,
-                    model.stations[m.s_id].name,
-                )
-            }
-            Move::Depart(m) => {
-                format!(
-                    "Depart {} from {} to {} via {}",
-                    model.trains[m.t_id].name,
-                    model.stations[m.from].name,
-                    model.stations[m.to].name,
-                    model.connections[m.c_id].name,
-                )
-            }
-            Move::TrainStart(m) => {
-                format!(
-                    "Start {} on {}",
-                    model.trains[m.t_id].name, model.stations[m.s_id].name,
-                )
-            }
-            _ => "".to_string(),
+            Move::Board(m) => m.to_string(model),
+            Move::Detrain(m) => m.to_string(model),
+            Move::Depart(m) => m.to_string(model),
+            Move::Start(m) => m.to_string(model),
+            Move::None(m) => m.to_string(model),
         }
     }
 }
@@ -144,25 +155,25 @@ impl Move {
 //         return true;
 //     }
 
-//     // board passengers that need to travel the same path
-//     let a_des = model.passengers[a.1].destination;
-//     let path_a = model.paths.get(&(a.2, a_des)).unwrap();
-//     for p_id in state.t_passengers[a.0].iter() {
-//         let b_des = model.passengers[*p_id].destination;
-//         let path_b = model.paths.get(&(a.2, b_des)).unwrap();
+// board passengers that need to travel the same path
+// let a_des = model.passengers[a.1].destination;
+// let path_a = model.paths.get(&(a.2, a_des)).unwrap();
+// for p_id in state.t_passengers[a.0].iter() {
+//     let b_des = model.passengers[*p_id].destination;
+//     let path_b = model.paths.get(&(a.2, b_des)).unwrap();
 
-//         for s_id in path_a.path.iter() {
-//             if a_des == *s_id {
-//                 return true;
-//             }
-//         }
-
-//         for s_id in path_b.path.iter() {
-//             if b_des == *s_id {
-//                 return true;
-//             }
+//     for s_id in path_a.path.iter() {
+//         if a_des == *s_id {
+//             return true;
 //         }
 //     }
+
+//     for s_id in path_b.path.iter() {
+//         if b_des == *s_id {
+//             return true;
+//         }
+//     }
+// }
 
 //     return false;
 // }

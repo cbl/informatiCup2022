@@ -1,5 +1,5 @@
 use crate::model::Model;
-use crate::move_::{Board, Depart, Detrain, Move, TrainStart};
+use crate::move_::{Board, Depart, Detrain, Move, Start};
 use crate::passenger::{Id as PId, Location as PLocation};
 use crate::station::Id as SId;
 use crate::train::{Id as TId, Location as TLocation};
@@ -78,6 +78,31 @@ impl State {
         self.s_capacity[s_id] - self.est_s_arrivals(t, s_id, model)
     }
 
+    pub fn get_blockers(&self, t: Time, s_id: SId, model: &Model) -> Capacity {
+        let n = 3;
+        let mut blockers = 0;
+        let trains = model.stations[s_id].capacity - self.s_capacity[s_id];
+
+        if (self.t..self.t + 3).contains(&t) {
+            blockers += trains
+        }
+
+        for i in self.t..t {
+            let arrivals = self.est_s_arrivals(t, s_id, model);
+            if (i..i + 3).contains(&t) {
+                blockers += arrivals;
+            }
+        }
+        for i in t..t + 3 {
+            let arrivals = self.est_s_arrivals(t, s_id, model);
+            if (t..t + 3).contains(&i) {
+                blockers += arrivals;
+            }
+        }
+
+        blockers
+    }
+
     /// Gets the estimated arrivals at the given stations.
     pub fn est_s_arrivals(&self, t: Time, s_id: SId, model: &Model) -> Capacity {
         self.t_location
@@ -93,11 +118,6 @@ impl State {
                         let p = ((t - *t_start) as f64 * model.trains[*t_id].speed)
                             / model.connections[*c_id].distance;
 
-                        // println!(
-                        //     "speed {}, distance {} p({})",
-                        //     model.trains[*t_id].speed, model.connections[*c_id].distance, p
-                        // );
-
                         p >= 1.0
                     }
                 }
@@ -107,7 +127,7 @@ impl State {
     }
 
     pub fn has_station_overload(&self) -> bool {
-        self.s_capacity.iter().any(|&c| c < -5)
+        self.s_capacity.iter().any(|&c| c < 0)
     }
 
     pub fn next(&mut self, model: &Model) {
@@ -128,7 +148,7 @@ impl State {
                     // todo: store arrived trains?
                     self.t_location[t_id] = TLocation::Station(*s_id);
                     // decrease station capacity
-                    self.s_capacity[*s_id] -= 2;
+                    self.s_capacity[*s_id] -= 1;
                     // increase connection capacity
                     self.c_capacity[*c_id] += 1;
                 }
@@ -213,7 +233,7 @@ impl State {
             .enumerate()
             .filter_map(|(s_id, &capacity)| {
                 if capacity > 0 {
-                    return Some(Move::TrainStart(TrainStart { t_id, s_id }));
+                    return Some(Move::Start(Start { t_id, s_id }));
                 } else {
                     return None;
                 }
@@ -260,7 +280,7 @@ impl State {
                 self.s_capacity[depart.from] += 1;
                 self.c_capacity[depart.c_id] -= 1;
             }
-            Move::TrainStart(t_start) => {
+            Move::Start(t_start) => {
                 self.s_capacity[t_start.s_id] -= 1;
                 self.t_location[t_start.t_id] = TLocation::Station(t_start.s_id);
             }
@@ -295,7 +315,7 @@ impl State {
                     self.s_capacity[depart.from] -= 1;
                     self.c_capacity[depart.c_id] += 1;
                 }
-                Move::TrainStart(t_start) => {
+                Move::Start(t_start) => {
                     self.s_capacity[t_start.s_id] += 1;
                     self.t_location[t_start.t_id] = TLocation::Nothing;
                 }
@@ -314,7 +334,7 @@ impl State {
             Move::Board(board) => board.t_id == t_id,
             Move::Detrain(detrain) => detrain.t_id == t_id,
             Move::Depart(depart) => depart.t_id == t_id,
-            Move::TrainStart(t_start) => t_start.t_id == t_id,
+            Move::Start(t_start) => t_start.t_id == t_id,
             _ => false,
         })
     }

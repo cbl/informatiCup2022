@@ -1,6 +1,7 @@
 use crate::connection::{Connection, Connections, Distance};
 use crate::model::Model;
 use crate::passenger::Passenger;
+use crate::rules::get_rules;
 use crate::station::Station;
 use crate::train::{Speed, StartStation, Train};
 use crate::types;
@@ -145,5 +146,5 @@ pub fn parse(string: &String) -> Model {
         false => Ordering::Greater,
     });
 
-    Model::new(stations, connections, trains, passengers)
+    Model::new(stations, connections, trains, passengers, get_rules())
 }
