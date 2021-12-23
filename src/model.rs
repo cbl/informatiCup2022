@@ -29,6 +29,7 @@ pub struct Model {
     pub max_train_capacity: Capacity,
     pub t_max: Time,
     pub rules: Vec<Rule>,
+    pub used_trains: usize,
 }
 
 impl Model {
@@ -41,6 +42,10 @@ impl Model {
         rules: Vec<Rule>,
     ) -> Model {
         let max_arrival = passengers.iter().map(|p| p.arrival).max().unwrap();
+
+        let sum_s_cap: i16 = stations.iter().map(|s| s.capacity).sum();
+        let t_len = trains.len();
+        let used_trains = std::cmp::min(t_len, (sum_s_cap as f64 / (t_len as f64 / 0.86)) as usize);
 
         let mut station_connections: Vec<Vec<CId>> = stations.iter().map(|_| vec![]).collect();
 
@@ -62,8 +67,9 @@ impl Model {
             max_distance,
             max_train_capacity,
             max_arrival,
-            t_max: (max_arrival as f64 * 1.5) as Time,
+            t_max: (max_arrival as f64 * 1.0) as Time,
             rules,
+            used_trains,
         }
     }
 

@@ -16,7 +16,7 @@ fn main() {
                 .long("tabu-size")
                 .takes_value(true)
                 .help(
-                    "Size of tabu list, increase for large models, required memory is <TABU> * 64bit (default 8000000)",
+                    "Size of tabu list, increase for large models, required memory is <TABU> * 32bit (default 80000000)",
                 ),
         )
         .arg(
@@ -57,7 +57,7 @@ fn main() {
 
     let max_millis: u128 = match matches
         .value_of("TIME")
-        .unwrap_or("30000")
+        .unwrap_or("600000")
         .to_string()
         .parse::<u128>()
     {
@@ -70,7 +70,7 @@ fn main() {
 
     let tabu_size = match matches
         .value_of("TABU")
-        .unwrap_or("8000000")
+        .unwrap_or("80000000")
         .to_string()
         .parse::<usize>()
     {

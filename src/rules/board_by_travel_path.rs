@@ -10,13 +10,13 @@ macro_rules! rule {
             let path_b = $model.paths.get(&($a.s_id, b_des)).unwrap();
 
             for s_id in path_a.path.iter() {
-                if a_des == *s_id {
+                if b_des == *s_id {
                     return Result::Some(true);
                 }
             }
 
             for s_id in path_b.path.iter() {
-                if b_des == *s_id {
+                if a_des == *s_id {
                     return Result::Some(true);
                 }
             }

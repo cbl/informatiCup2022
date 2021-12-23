@@ -7,5 +7,7 @@ COPY ./ ./
 # Build your program for release
 RUN cargo build --release
 
+RUN chmod +x ./run.sh
+
 # Run the binary
 ENTRYPOINT ["./run.sh"]

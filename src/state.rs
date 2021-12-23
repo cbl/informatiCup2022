@@ -78,31 +78,6 @@ impl State {
         self.s_capacity[s_id] - self.est_s_arrivals(t, s_id, model)
     }
 
-    pub fn get_blockers(&self, t: Time, s_id: SId, model: &Model) -> Capacity {
-        let n = 3;
-        let mut blockers = 0;
-        let trains = model.stations[s_id].capacity - self.s_capacity[s_id];
-
-        if (self.t..self.t + 3).contains(&t) {
-            blockers += trains
-        }
-
-        for i in self.t..t {
-            let arrivals = self.est_s_arrivals(t, s_id, model);
-            if (i..i + 3).contains(&t) {
-                blockers += arrivals;
-            }
-        }
-        for i in t..t + 3 {
-            let arrivals = self.est_s_arrivals(t, s_id, model);
-            if (t..t + 3).contains(&i) {
-                blockers += arrivals;
-            }
-        }
-
-        blockers
-    }
-
     /// Gets the estimated arrivals at the given stations.
     pub fn est_s_arrivals(&self, t: Time, s_id: SId, model: &Model) -> Capacity {
         self.t_location

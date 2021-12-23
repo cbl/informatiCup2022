@@ -2,7 +2,7 @@ use crate::model::Model;
 use crate::move_::Move;
 use crate::state::State;
 use crate::train::Location as TLocation;
-use crate::types::{Fitness, IdSet, TimeDiff};
+use crate::types::{IdSet, TimeDiff};
 
 /// The soltion holds a list of states at any given point in
 /// time.
@@ -26,6 +26,16 @@ impl Solution {
         self.0[self.0.len() - 1].p_delays.clone()
     }
 
+    pub fn has_station_overload(&self) -> bool {
+        let len = self.0.len();
+
+        if len == 0 {
+            false
+        } else {
+            self.0[len - 1].has_station_overload()
+        }
+    }
+
     /// Gets the total delays of the solution
     pub fn fitness(&self) -> TimeDiff {
         let len = self.0.len();
@@ -45,25 +55,53 @@ impl Solution {
         let mut string: String = "".to_owned();
 
         self.0.iter().enumerate().for_each(|(t, state)| {
-            string.push_str(&format!("[Time:{}]\n", t));
-            string.push_str(&format!("s_capacities: {:?}\n", state.s_capacity));
             string.push_str(&format!(
-                "est_s_cap: {:?}\n",
-                (0..state.s_capacity.len())
-                    .map(|s_id| { state.est_s_cap(model.t_max, s_id, model) })
-                    .collect::<Vec<i16>>()
+                "[Time:{}][Fitness:({})]\n",
+                t,
+                state.p_delays.iter().filter(|d| **d > 0).sum::<TimeDiff>()
             ));
-            string.push_str(&format!(
-                "s_c_cap: {:?}\n",
-                (0..state.s_capacity.len())
-                    .map(|s_id| {
-                        model.station_connections[s_id]
-                            .iter()
-                            .map(|c_id| state.c_capacity[*c_id])
-                            .len() as i16
-                    })
-                    .collect::<Vec<i16>>()
-            ));
+            // string.push_str(&format!("s_capacities: {:?}\n", state.s_capacity));
+            // string.push_str(&format!("s_passengers: {:?}\n", state.s_passengers));
+            string.push_str(&format!("t_passengers: {:?}\n", state.t_passengers));
+            // string.push_str(&format!(
+            //     "destinations: {:?}\n",
+            //     state.t_passengers[0]
+            //         .iter()
+            //         .map(|p_id| model.passengers[*p_id].destination)
+            //         .collect::<Vec<usize>>()
+            // ));
+            // string.push_str(&format!(
+            //     "paths: {:?}\n",
+            //     state.t_passengers[0]
+            //         .iter()
+            //         .map(|p_id| model
+            //             .paths
+            //             .get(&(
+            //                 model.passengers[*p_id].start,
+            //                 model.passengers[*p_id].destination
+            //             ))
+            //             .unwrap()
+            //             .path
+            //             .clone())
+            //         .collect::<Vec<Vec<usize>>>()
+            // ));
+            // string.push_str(&format!(
+            //     "est_s_cap: {:?}\n",
+            //     (0..state.s_capacity.len())
+            //         .map(|s_id| { state.est_s_cap(model.t_max, s_id, model) })
+            //         .collect::<Vec<i16>>()
+            // ));
+            // string.push_str(&format!(
+            //     "s_c_cap: {:?}\n",
+            //     (0..state.s_capacity.len())
+            //         .map(|s_id| {
+            //             model.station_connections[s_id]
+            //                 .iter()
+            //                 .map(|c_id| state.c_capacity[*c_id])
+            //                 .len() as i16
+            //         })
+            //         .collect::<Vec<i16>>()
+            // ));
             // string.push_str(&format!("c_capacities: {:?}\n", state.c_capacity));
 
             for m in &state.moves {

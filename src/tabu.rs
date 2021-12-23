@@ -3,7 +3,7 @@ use crate::move_::{Move, None};
 use crate::solution::Solution;
 use crate::state::State;
 use crate::types::{Fitness, Time, TimeDiff};
-use fxhash::hash64;
+use fxhash::hash32;
 use linked_hash_set::LinkedHashSet;
 use rand::seq::SliceRandom;
 use rand::Rng;
@@ -17,7 +17,7 @@ const INITIAL_TEMP: f64 = 0.999;
 const RANGE: f64 = 0.3;
 
 pub struct TabuSearch {
-    tabu: LinkedHashSet<u64>,
+    tabu: LinkedHashSet<u32>,
     max_millis: u128,
     tabu_size: usize,
     track_fitness: bool,
@@ -49,7 +49,7 @@ impl TabuSearch {
         // the best move
         let mut best_move: Move = move_none;
 
-        for t_id in 0..model.trains.len() {
+        for t_id in 0..(model.used_trains) {
             moves = state.get_moves(t_id, model);
 
             if moves.is_empty() {
@@ -72,7 +72,7 @@ impl TabuSearch {
 
                 state.push(m, model);
 
-                if !self.tabu.contains(&hash64(state)) {
+                if !self.tabu.contains(&hash32(state)) {
                     best_move = m;
                 }
 
@@ -91,7 +91,7 @@ impl TabuSearch {
 
     /// Add state to tabu list
     fn add_tabu(&mut self, state: &State) {
-        self.tabu.insert(hash64(state));
+        self.tabu.insert(hash32(state));
 
         if self.tabu.len() > self.tabu_size {
             self.tabu.pop_back();
@@ -123,7 +123,7 @@ impl TabuSearch {
 
         let mut overloads = 0;
 
-        while best_solution.fitness() > 0 {
+        while best_solution.fitness() > 0 && !best_solution.has_station_overload() {
             while state.t < model.t_max {
                 self.find_neighbour(&mut state, model);
                 solution.0.push(state.clone());
@@ -138,11 +138,9 @@ impl TabuSearch {
                 state.next(model);
 
                 if state.has_station_overload() {
-                    overloads += 1;
+                    // overloads += 1;
+                    // println!("{}", overloads);
                     break;
-                    // println!("overloads: {}", overloads);
-                    // solution.0.push(state);
-                    // return (solution, 0);
                 }
 
                 if state.p_arrived.len() == model.passengers.len() {
@@ -150,16 +148,12 @@ impl TabuSearch {
                 }
             }
 
-            // return (solution, start_time.elapsed().as_millis());
-            // std::process::exit(1);
-
             if solution.fitness() < best_solution.fitness() {
                 best_solution = solution.clone();
             } else {
                 solution = best_solution.clone();
             }
 
-            // start = rnd.gen_range(self.get_range(&solution, &temperature));
             start = rnd.gen_range(0..solution.0.len());
 
             if start == 0 {
@@ -175,9 +169,6 @@ impl TabuSearch {
                 break;
             }
         }
-
-        // println!("overloads: {}", overloads);
-        // std::process::exit(1);
 
         (best_solution, start_time.elapsed().as_millis())
     }
