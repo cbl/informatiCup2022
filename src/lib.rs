@@ -5,6 +5,8 @@ pub mod move_;
 pub mod parser;
 pub mod passenger;
 pub mod plotter;
+pub mod rule;
+pub mod rules;
 pub mod solution;
 pub mod state;
 pub mod station;

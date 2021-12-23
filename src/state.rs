@@ -1,11 +1,12 @@
 use crate::model::Model;
-use crate::move_::Move;
+use crate::move_::{Board, Depart, Detrain, Move, Start};
 use crate::passenger::{Id as PId, Location as PLocation};
 use crate::station::Id as SId;
 use crate::train::{Id as TId, Location as TLocation};
 use crate::types::{Capacity, Fitness, IdSet, Time, TimeDiff};
 
 use itertools::Itertools;
+use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 
 const LAMBDA_DELAY: Fitness = 5.0;
@@ -72,28 +73,61 @@ impl State {
         }
     }
 
-    pub fn arriving_trains(&self, t: Time, s_id: SId, model: &Model) -> usize {
+    /// Gets the estimated station capacity
+    pub fn est_s_cap(&self, t: Time, s_id: SId, model: &Model) -> Capacity {
+        self.s_capacity[s_id] - self.est_s_arrivals(t, s_id, model)
+    }
+
+    pub fn get_blockers(&self, t: Time, s_id: SId, model: &Model) -> Capacity {
+        let n = 3;
+        let mut blockers = 0;
+        let trains = model.stations[s_id].capacity - self.s_capacity[s_id];
+
+        if (self.t..self.t + 3).contains(&t) {
+            blockers += trains
+        }
+
+        for i in self.t..t {
+            let arrivals = self.est_s_arrivals(t, s_id, model);
+            if (i..i + 3).contains(&t) {
+                blockers += arrivals;
+            }
+        }
+        for i in t..t + 3 {
+            let arrivals = self.est_s_arrivals(t, s_id, model);
+            if (t..t + 3).contains(&i) {
+                blockers += arrivals;
+            }
+        }
+
+        blockers
+    }
+
+    /// Gets the estimated arrivals at the given stations.
+    pub fn est_s_arrivals(&self, t: Time, s_id: SId, model: &Model) -> Capacity {
         self.t_location
             .iter()
             .enumerate()
             .filter(|(t_id, l)| match l {
                 TLocation::Connection(c_id, to, t_start) => {
                     if s_id != *to {
-                        return false;
+                        false
+                    } else if t < *t_start {
+                        false
+                    } else {
+                        let p = ((t - *t_start) as f64 * model.trains[*t_id].speed)
+                            / model.connections[*c_id].distance;
+
+                        p >= 1.0
                     }
-
-                    let p = ((self.t - *t_start + t) as f64 * model.trains[*t_id].speed)
-                        / model.connections[*c_id].distance;
-
-                    p >= 1.0
                 }
                 _ => false,
             })
-            .count()
+            .count() as Capacity
     }
 
     pub fn has_station_overload(&self) -> bool {
-        self.s_capacity.iter().any(|&c| c < -5)
+        self.s_capacity.iter().any(|&c| c < 0)
     }
 
     pub fn next(&mut self, model: &Model) {
@@ -114,7 +148,7 @@ impl State {
                     // todo: store arrived trains?
                     self.t_location[t_id] = TLocation::Station(*s_id);
                     // decrease station capacity
-                    self.s_capacity[*s_id] -= 2;
+                    self.s_capacity[*s_id] -= 1;
                     // increase connection capacity
                     self.c_capacity[*c_id] += 1;
                 }
@@ -154,14 +188,26 @@ impl State {
         self.s_passengers[s_id]
             .iter()
             .filter(|&p_id| model.passengers[*p_id].size <= self.t_capacity[t_id])
-            .map(|p_id| Move::Board((t_id, *p_id, s_id)))
+            .map(|p_id| {
+                Move::Board(Board {
+                    t_id,
+                    p_id: *p_id,
+                    s_id,
+                })
+            })
             .collect()
     }
 
     pub fn detrains(&self, t_id: TId, s_id: SId) -> Vec<Move> {
         self.t_passengers[t_id]
             .iter()
-            .map(|p_id| Move::Detrain((t_id, *p_id, s_id)))
+            .map(|p_id| {
+                Move::Detrain(Detrain {
+                    t_id,
+                    p_id: *p_id,
+                    s_id,
+                })
+            })
             .collect()
     }
 
@@ -169,18 +215,25 @@ impl State {
         model.station_connections[s_id]
             .iter()
             .filter(|&c_id| self.c_capacity[*c_id] > 0)
-            .map(|&c_id| Move::Depart((t_id, (s_id, model.get_destination(s_id, c_id)), c_id)))
+            .map(|&c_id| {
+                Move::Depart(Depart {
+                    t_id,
+                    from: s_id,
+                    to: model.get_destination(s_id, c_id),
+                    c_id,
+                })
+            })
             .collect()
     }
 
     /// gets the available train starts for the train
-    pub fn train_starts(&self, t: TId) -> Vec<Move> {
+    pub fn train_starts(&self, t_id: TId) -> Vec<Move> {
         self.s_capacity
             .iter()
             .enumerate()
-            .filter_map(|(s, &capacity)| {
+            .filter_map(|(s_id, &capacity)| {
                 if capacity > 0 {
-                    return Some(Move::TrainStart((t, s)));
+                    return Some(Move::Start(Start { t_id, s_id }));
                 } else {
                     return None;
                 }
@@ -193,41 +246,43 @@ impl State {
         self.moves.push(m);
 
         match m {
-            Move::Board((t_id, p_id, s_id)) => {
+            Move::Board(board) => {
                 // update train capacity
-                self.t_capacity[t_id] -= model.passengers[p_id].size;
+                self.t_capacity[board.t_id] -= model.passengers[board.p_id].size;
 
                 // set passenger location
-                self.p_location[p_id] = PLocation::Train(t_id);
+                self.p_location[board.p_id] = PLocation::Train(board.t_id);
 
                 // remember train passengers
-                self.t_passengers[t_id].insert(p_id);
+                self.t_passengers[board.t_id].insert(board.p_id);
                 // forget station passenger
-                self.s_passengers[s_id].remove(&p_id);
+                self.s_passengers[board.s_id].remove(&board.p_id);
             }
-            Move::Detrain((t_id, p_id, s_id)) => {
+            Move::Detrain(detrain) => {
                 // update train capacity
-                self.t_capacity[t_id] += model.passengers[p_id].size;
+                self.t_capacity[detrain.t_id] += model.passengers[detrain.p_id].size;
 
                 // set passenger location
-                if s_id == model.passengers[p_id].destination {
-                    self.p_location[p_id] = PLocation::Arrived;
-                    self.p_arrived.insert(p_id);
-                    self.p_delays[p_id] = self.t as i32 - model.passengers[p_id].arrival as i32;
+                if detrain.s_id == model.passengers[detrain.p_id].destination {
+                    self.p_location[detrain.p_id] = PLocation::Arrived;
+                    self.p_arrived.insert(detrain.p_id);
+                    self.p_delays[detrain.p_id] =
+                        self.t as i32 - model.passengers[detrain.p_id].arrival as i32;
                 } else {
-                    self.p_location[p_id] = PLocation::Station(s_id);
+                    self.p_location[detrain.p_id] = PLocation::Station(detrain.s_id);
                 }
 
-                self.t_passengers[t_id].remove(&p_id);
+                self.t_passengers[detrain.t_id].remove(&detrain.p_id);
             }
-            Move::Depart((t_id, (from, to), c_id)) => {
-                self.t_location[t_id] = TLocation::Connection(c_id, to, self.t);
-                self.s_capacity[from] += 1;
-                self.c_capacity[c_id] -= 1;
+            Move::Depart(depart) => {
+                self.t_location[depart.t_id] =
+                    TLocation::Connection(depart.c_id, depart.to, self.t);
+                self.s_capacity[depart.from] += 1;
+                self.c_capacity[depart.c_id] -= 1;
             }
-            Move::TrainStart((t, s)) => {
-                self.s_capacity[s] -= 1;
-                self.t_location[t] = TLocation::Station(s);
+            Move::Start(t_start) => {
+                self.s_capacity[t_start.s_id] -= 1;
+                self.t_location[t_start.t_id] = TLocation::Station(t_start.s_id);
             }
             _ => (),
         }
@@ -236,33 +291,33 @@ impl State {
     pub fn pop(&mut self, model: &Model) -> Option<Move> {
         if let Some(m) = self.moves.pop() {
             match m {
-                Move::Board((t_id, p_id, s_id)) => {
-                    self.t_capacity[t_id] += model.passengers[p_id].size;
-                    self.p_location[p_id] = PLocation::Station(s_id);
-                    self.t_passengers[t_id].remove(&p_id);
-                    self.s_passengers[s_id].insert(p_id);
+                Move::Board(board) => {
+                    self.t_capacity[board.t_id] += model.passengers[board.p_id].size;
+                    self.p_location[board.p_id] = PLocation::Station(board.s_id);
+                    self.t_passengers[board.t_id].remove(&board.p_id);
+                    self.s_passengers[board.s_id].insert(board.p_id);
                 }
-                Move::Detrain((t_id, p_id, s_id)) => {
+                Move::Detrain(detrain) => {
                     // update train capacity
-                    self.t_capacity[t_id] -= model.passengers[p_id].size;
-                    self.p_location[p_id] = PLocation::Train(t_id);
+                    self.t_capacity[detrain.t_id] -= model.passengers[detrain.p_id].size;
+                    self.p_location[detrain.p_id] = PLocation::Train(detrain.t_id);
 
                     // set passenger location
-                    if s_id == model.passengers[p_id].destination {
-                        self.p_arrived.remove(&p_id);
-                        self.p_delays[p_id] = model.t_max as TimeDiff;
+                    if detrain.s_id == model.passengers[detrain.p_id].destination {
+                        self.p_arrived.remove(&detrain.p_id);
+                        self.p_delays[detrain.p_id] = model.t_max as TimeDiff;
                     }
 
-                    self.t_passengers[t_id].insert(p_id);
+                    self.t_passengers[detrain.t_id].insert(detrain.p_id);
                 }
-                Move::Depart((t_id, (from, to), c_id)) => {
-                    self.t_location[t_id] = TLocation::Station(from);
-                    self.s_capacity[from] -= 1;
-                    self.c_capacity[c_id] += 1;
+                Move::Depart(depart) => {
+                    self.t_location[depart.t_id] = TLocation::Station(depart.from);
+                    self.s_capacity[depart.from] -= 1;
+                    self.c_capacity[depart.c_id] += 1;
                 }
-                Move::TrainStart((t, s)) => {
-                    self.s_capacity[s] += 1;
-                    self.t_location[t] = TLocation::Nothing;
+                Move::Start(t_start) => {
+                    self.s_capacity[t_start.s_id] += 1;
+                    self.t_location[t_start.t_id] = TLocation::Nothing;
                 }
                 _ => (),
             }
@@ -276,10 +331,10 @@ impl State {
     /// Gets the move for the given train.
     pub fn train_move(&self, t_id: TId) -> Option<&Move> {
         self.moves.iter().find(|m| match m {
-            Move::Board((t, _, _)) => *t == t_id,
-            Move::Detrain((t, _, _)) => *t == t_id,
-            Move::Depart((t, _, _)) => *t == t_id,
-            Move::TrainStart((t, _)) => *t == t_id,
+            Move::Board(board) => board.t_id == t_id,
+            Move::Detrain(detrain) => detrain.t_id == t_id,
+            Move::Depart(depart) => depart.t_id == t_id,
+            Move::Start(t_start) => t_start.t_id == t_id,
             _ => false,
         })
     }
@@ -287,8 +342,8 @@ impl State {
     /// Gets the move for the given passenger.
     pub fn passenger_move(&self, p_id: TId) -> Option<&Move> {
         self.moves.iter().find(|m| match m {
-            Move::Board((_, p, _)) => *p == p_id,
-            Move::Detrain((_, p, _)) => *p == p_id,
+            Move::Board(board) => board.p_id == p_id,
+            Move::Detrain(detrain) => detrain.p_id == p_id,
             _ => false,
         })
     }

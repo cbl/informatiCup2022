@@ -29,8 +29,6 @@ impl Plotter {
 
         root.fill(&WHITE)?;
 
-        println!("{}", tabu.fitness.len());
-
         let min = tabu
             .fitness
             .iter()
@@ -61,7 +59,6 @@ impl Plotter {
         root.present().expect(
             "Unable to write result to file, please make sure 'plots' dir exists under current dir",
         );
-        // println!("Result has been saved to {}", file_name);
 
         Ok(())
     }

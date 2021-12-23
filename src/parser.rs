@@ -1,10 +1,12 @@
 use crate::connection::{Connection, Connections, Distance};
 use crate::model::Model;
 use crate::passenger::Passenger;
+use crate::rules::get_rules;
 use crate::station::Station;
 use crate::train::{Speed, StartStation, Train};
 use crate::types;
 use regex::Regex;
+use std::cmp::Ordering;
 use std::collections::HashMap;
 
 pub fn parse(string: &String) -> Model {
@@ -138,5 +140,11 @@ pub fn parse(string: &String) -> Model {
         };
     }
 
-    Model::new(stations, connections, trains, passengers)
+    // order trains by speed
+    trains.sort_by(|a, b| match a.speed > b.speed {
+        true => Ordering::Less,
+        false => Ordering::Greater,
+    });
+
+    Model::new(stations, connections, trains, passengers, get_rules())
 }

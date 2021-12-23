@@ -1,8 +1,10 @@
 use crate::connection::{Connection, Connections, Distance, Id as CId};
 use crate::passenger::{Id as PId, Location as PLocation, Passenger};
+use crate::rule::Rule;
+use crate::rules::get_rules;
 use crate::state::State;
 use crate::station::{Id as SId, Station};
-use crate::train::{Location as TLocation, StartStation, Train};
+use crate::train::{Id as TId, Location as TLocation, StartStation, Train};
 use crate::types::{Capacity, Fitness, Time, TimeDiff};
 
 use std::collections::HashMap;
@@ -15,7 +17,6 @@ pub struct Path {
 
 /// The model struct holds all existing entities and the corresponding meta
 /// data. This includes a list of stations, connections, trains and passengers.
-#[derive(Clone)]
 pub struct Model {
     pub stations: Vec<Station>,
     pub connections: Connections,
@@ -27,6 +28,7 @@ pub struct Model {
     pub max_arrival: Time,
     pub max_train_capacity: Capacity,
     pub t_max: Time,
+    pub rules: Vec<Rule>,
 }
 
 impl Model {
@@ -36,6 +38,7 @@ impl Model {
         connections: Connections,
         trains: Vec<Train>,
         passengers: Vec<Passenger>,
+        rules: Vec<Rule>,
     ) -> Model {
         let max_arrival = passengers.iter().map(|p| p.arrival).max().unwrap();
 
@@ -59,7 +62,8 @@ impl Model {
             max_distance,
             max_train_capacity,
             max_arrival,
-            t_max: max_arrival,
+            t_max: (max_arrival as f64 * 1.5) as Time,
+            rules,
         }
     }
 
@@ -100,7 +104,11 @@ impl Model {
             })
             .collect();
 
-        Model::new(stations, connections, trains, passengers)
+        Model::new(stations, connections, trains, passengers, get_rules())
+    }
+
+    pub fn train_arrival(&self, t_id: TId, c_id: CId) -> Time {
+        (self.connections[c_id].distance / self.trains[t_id].speed).ceil() as Time
     }
 
     pub fn normalize_distance(&self, d: Distance) -> Fitness {
