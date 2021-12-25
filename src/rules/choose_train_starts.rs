@@ -22,7 +22,7 @@ pub fn rules() -> Vec<Rule> {
         }),
         // depart vs none
         Rule::IsStartGtStart(Closure {
-            c: Box::new(|a, b, state, model| {
+            c: Box::new(|a, _, state, model| {
                 let a_sum_arrival = state.s_passengers[a.s_id]
                     .iter()
                     .filter(|&p_id| model.passengers[*p_id].size <= state.t_capacity[a.t_id])

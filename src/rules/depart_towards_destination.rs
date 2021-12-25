@@ -1,6 +1,3 @@
-use std::cmp::Ordering;
-
-use crate::connection::Distance;
 use crate::rule::{Closure, Result, Rule};
 
 /// A train should depart towards the destination.

@@ -1,6 +1,6 @@
 use crate::model::Model;
 use crate::move_::{Board, Depart, Detrain, None, Start};
-use crate::move_::{Move, MoveStruct};
+use crate::move_::{Move, MoveTr};
 use crate::state::State;
 use std::ops::Not;
 
@@ -35,15 +35,15 @@ impl Not for Result {
 
 pub struct Closure<A, B>
 where
-    A: MoveStruct,
-    B: MoveStruct,
+    A: MoveTr,
+    B: MoveTr,
 {
     pub c: Box<dyn Fn(&A, &B, &State, &Model) -> Result>,
 }
 
 pub struct ClosureAny<A>
 where
-    A: MoveStruct,
+    A: MoveTr,
 {
     pub c: Box<dyn Fn(&A, &State, &Model) -> Result>,
 }

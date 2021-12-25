@@ -108,6 +108,9 @@ fn main() {
 
     // plot the fitness
     if matches.is_present("PLOT") {
-        (Plotter { path: "plots" }).plot_fitness(&tabu);
+        #[allow(unused_must_use)]
+        {
+            (Plotter { path: "plots" }).plot_fitness(&tabu);
+        }
     }
 }

@@ -5,10 +5,11 @@ pub fn rules() -> Vec<Rule> {
     vec![
         Rule::IsDepartGtNone(Closure {
             c: Box::new(|a, _, state, model| {
-                let est_s_cap = state.est_s_cap(model.t_max, a.to, model);
-                let s_cap = model.stations[a.to].capacity;
+                let train_arrival_time = state.t + model.train_arrival(a.t_id, a.c_id);
+                let estimated_station_capacity = state.est_s_cap(train_arrival_time, a.to, model);
+                let max_station_capacity = model.stations[a.to].capacity;
 
-                if (est_s_cap - 1) <= -s_cap {
+                if (estimated_station_capacity - 1) <= -max_station_capacity {
                     Result::Some(false)
                 } else {
                     Result::None

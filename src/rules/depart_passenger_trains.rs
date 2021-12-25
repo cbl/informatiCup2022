@@ -1,4 +1,4 @@
-use crate::rule::{Closure, ClosureAny, Result, Rule};
+use crate::rule::{Closure, Result, Rule};
 
 /// Trains with passengers should depart.
 pub fn rules() -> Vec<Rule> {

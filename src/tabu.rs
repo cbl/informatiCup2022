@@ -2,19 +2,12 @@ use crate::model::Model;
 use crate::move_::{Move, None};
 use crate::solution::Solution;
 use crate::state::State;
-use crate::types::{Fitness, Time, TimeDiff};
+use crate::types::TimeDiff;
 use fxhash::hash32;
 use linked_hash_set::LinkedHashSet;
 use rand::seq::SliceRandom;
 use rand::Rng;
-use std::cmp::max;
-use std::ops::Range;
 use std::time::Instant;
-
-const STEPS_PER_TEMP: usize = 10;
-const COOLING_FACTOR: f64 = 0.96;
-const INITIAL_TEMP: f64 = 0.999;
-const RANGE: f64 = 0.3;
 
 pub struct TabuSearch {
     tabu: LinkedHashSet<u32>,
@@ -102,9 +95,6 @@ impl TabuSearch {
         // random generator
         let mut rnd = rand::thread_rng();
 
-        // the system temperature
-        let mut temperature = INITIAL_TEMP;
-
         // start system time
         let start_time = Instant::now();
 
@@ -121,7 +111,7 @@ impl TabuSearch {
         //
         let mut start: usize = 0;
 
-        let mut overloads = 0;
+        // let mut overloads = 0;
 
         while best_solution.fitness() > 0 && !best_solution.has_station_overload() {
             while state.t < model.t_max {
@@ -129,10 +119,10 @@ impl TabuSearch {
                 solution.0.push(state.clone());
 
                 if self.track_fitness {
-                    if solution.fitness() < min_delay {
-                        min_delay = solution.fitness();
-                    }
-                    self.fitness.push(min_delay);
+                    // if solution.fitness() < min_delay {
+                    //     min_delay = solution.fitness();
+                    // }
+                    self.fitness.push(solution.fitness());
                 }
 
                 state.next(model);
@@ -144,6 +134,7 @@ impl TabuSearch {
                 }
 
                 if state.p_arrived.len() == model.passengers.len() {
+                    // println!("all arrived...");
                     break;
                 }
             }

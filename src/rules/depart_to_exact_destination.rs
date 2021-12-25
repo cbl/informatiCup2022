@@ -1,4 +1,3 @@
-use crate::connection::Distance;
 use crate::rule::{Closure, Result, Rule};
 
 /// A train should depart to the exact destination.

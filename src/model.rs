@@ -1,11 +1,11 @@
 use crate::connection::{Connection, Connections, Distance, Id as CId};
-use crate::passenger::{Id as PId, Location as PLocation, Passenger};
+use crate::passenger::{Location as PLocation, Passenger};
 use crate::rule::Rule;
 use crate::rules::get_rules;
 use crate::state::State;
 use crate::station::{Id as SId, Station};
 use crate::train::{Id as TId, Location as TLocation, StartStation, Train};
-use crate::types::{Capacity, Fitness, Time, TimeDiff};
+use crate::types::{Capacity, Time, TimeDiff};
 
 use std::collections::HashMap;
 
@@ -46,6 +46,7 @@ impl Model {
         let sum_s_cap: i16 = stations.iter().map(|s| s.capacity).sum();
         let t_len = trains.len();
         let used_trains = std::cmp::min(t_len, (sum_s_cap as f64 / (t_len as f64 / 0.86)) as usize);
+        // let used_trains = t_len;
 
         let mut station_connections: Vec<Vec<CId>> = stations.iter().map(|_| vec![]).collect();
 
@@ -67,7 +68,7 @@ impl Model {
             max_distance,
             max_train_capacity,
             max_arrival,
-            t_max: (max_arrival as f64 * 1.0) as Time,
+            t_max: (max_arrival as f64 * 1.5) as Time,
             rules,
             used_trains,
         }
@@ -117,18 +118,6 @@ impl Model {
         (self.connections[c_id].distance / self.trains[t_id].speed).ceil() as Time
     }
 
-    pub fn normalize_distance(&self, d: Distance) -> Fitness {
-        d as Fitness / self.max_distance as Fitness
-    }
-
-    pub fn normalized_arrival(&self, p_id: PId) -> Fitness {
-        self.passengers[p_id].arrival as Fitness / self.max_arrival as Fitness
-    }
-
-    pub fn normalize_train_capacity(&self, c: Fitness) -> Fitness {
-        c / self.max_train_capacity as Fitness
-    }
-
     pub fn get_destination(&self, s: SId, c: CId) -> SId {
         if self.connections[c].a == s {
             return self.connections[c].b;
@@ -136,7 +125,7 @@ impl Model {
         self.connections[c].a
     }
 
-    pub fn distance(&self, a: SId, b: SId) -> f64 {
+    pub fn distance(&self, a: SId, b: SId) -> Distance {
         self.paths.get(&(a, b)).unwrap().distance
     }
 

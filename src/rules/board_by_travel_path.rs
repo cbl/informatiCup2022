@@ -1,7 +1,7 @@
 use crate::rule::{Closure, Result, Rule};
 
 #[macro_export]
-macro_rules! rule {
+macro_rules! bbtp_rule {
     ( $a:expr, $state:expr, $model:expr ) => {{
         let a_des = $model.passengers[$a.p_id].destination;
         let path_a = $model.paths.get(&($a.s_id, a_des)).unwrap();
@@ -31,11 +31,11 @@ pub fn rules() -> Vec<Rule> {
     vec![
         // board vs depart
         Rule::IsBoardGtDepart(Closure {
-            c: Box::new(|a, _, state, model| rule!(a, state, model)),
+            c: Box::new(|a, _, state, model| bbtp_rule!(a, state, model)),
         }),
         // board vs none
         Rule::IsBoardGtNone(Closure {
-            c: Box::new(|a, _, state, model| rule!(a, state, model)),
+            c: Box::new(|a, _, state, model| bbtp_rule!(a, state, model)),
         }),
     ]
 }

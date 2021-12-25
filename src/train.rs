@@ -24,9 +24,9 @@ impl StartStation {
 
 #[derive(Clone, PartialEq, Copy, Hash)]
 pub enum Location {
-    // - CId: connection id
-    // - SId: destination id,
-    // - Time: the start time
+    /// - CId: connection id
+    /// - SId: destination id,
+    /// - Time: the start time
     Connection(CId, SId, types::Time),
     Station(SId),
     Nothing,

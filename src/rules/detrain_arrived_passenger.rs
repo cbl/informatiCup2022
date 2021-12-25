@@ -1,4 +1,4 @@
-use crate::rule::{Closure, ClosureAny, Result, Rule};
+use crate::rule::{Closure, Result, Rule};
 
 #[macro_export]
 macro_rules! dap_rule {
@@ -16,7 +16,7 @@ macro_rules! dap_rule {
 pub fn rules() -> Vec<Rule> {
     vec![
         Rule::IsBoardGtDetrain(Closure {
-            c: Box::new(|_, b, _, model| dap_rule!(b, model)),
+            c: Box::new(|_, b, _, model| !dap_rule!(b, model)),
         }),
         Rule::IsDetrainGtDepart(Closure {
             c: Box::new(|a, _, _, model| dap_rule!(a, model)),

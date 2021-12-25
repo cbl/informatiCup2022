@@ -26,6 +26,7 @@ impl Solution {
         self.0[self.0.len() - 1].p_delays.clone()
     }
 
+    /// Determines whether the latest state has a station overload.
     pub fn has_station_overload(&self) -> bool {
         let len = self.0.len();
 
@@ -60,49 +61,7 @@ impl Solution {
                 t,
                 state.p_delays.iter().filter(|d| **d > 0).sum::<TimeDiff>()
             ));
-            // string.push_str(&format!("s_capacities: {:?}\n", state.s_capacity));
-            // string.push_str(&format!("s_passengers: {:?}\n", state.s_passengers));
             string.push_str(&format!("t_passengers: {:?}\n", state.t_passengers));
-            // string.push_str(&format!(
-            //     "destinations: {:?}\n",
-            //     state.t_passengers[0]
-            //         .iter()
-            //         .map(|p_id| model.passengers[*p_id].destination)
-            //         .collect::<Vec<usize>>()
-            // ));
-            // string.push_str(&format!(
-            //     "paths: {:?}\n",
-            //     state.t_passengers[0]
-            //         .iter()
-            //         .map(|p_id| model
-            //             .paths
-            //             .get(&(
-            //                 model.passengers[*p_id].start,
-            //                 model.passengers[*p_id].destination
-            //             ))
-            //             .unwrap()
-            //             .path
-            //             .clone())
-            //         .collect::<Vec<Vec<usize>>>()
-            // ));
-            // string.push_str(&format!(
-            //     "est_s_cap: {:?}\n",
-            //     (0..state.s_capacity.len())
-            //         .map(|s_id| { state.est_s_cap(model.t_max, s_id, model) })
-            //         .collect::<Vec<i16>>()
-            // ));
-            // string.push_str(&format!(
-            //     "s_c_cap: {:?}\n",
-            //     (0..state.s_capacity.len())
-            //         .map(|s_id| {
-            //             model.station_connections[s_id]
-            //                 .iter()
-            //                 .map(|c_id| state.c_capacity[*c_id])
-            //                 .len() as i16
-            //         })
-            //         .collect::<Vec<i16>>()
-            // ));
-            // string.push_str(&format!("c_capacities: {:?}\n", state.c_capacity));
 
             for m in &state.moves {
                 string.push_str(&m.to_string(model));
@@ -125,12 +84,6 @@ impl Solution {
                             * 100.0
                     ));
                 }
-                // if let TLocation::Station(s_id) = location {
-                //     string.push_str(&format!(
-                //         "{} on {}\n",
-                //         model.trains[t_id].name, model.stations[*s_id].name,
-                //     ));
-                // }
             }
 
             string.push_str(&"\n");
