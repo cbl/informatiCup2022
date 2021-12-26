@@ -6,6 +6,7 @@ use crate::state::State;
 use crate::station::{Id as SId, Station};
 use crate::train::{Id as TId, Location as TLocation, StartStation, Train};
 use crate::types::{Capacity, Time, TimeDiff};
+use fxhash::FxBuildHasher;
 
 use std::collections::HashMap;
 
@@ -15,6 +16,8 @@ pub struct Path {
     pub distance: Distance,
 }
 
+type Paths = HashMap<(SId, SId), Path, FxBuildHasher>;
+
 /// The model struct holds all existing entities and the corresponding meta
 /// data. This includes a list of stations, connections, trains and passengers.
 pub struct Model {
@@ -23,7 +26,7 @@ pub struct Model {
     pub trains: Vec<Train>,
     pub passengers: Vec<Passenger>,
     pub station_connections: Vec<Vec<CId>>,
-    pub paths: HashMap<(SId, SId), Path>,
+    pub paths: Paths,
     pub max_distance: Distance,
     pub max_arrival: Time,
     pub max_train_capacity: Capacity,
@@ -45,8 +48,8 @@ impl Model {
 
         let sum_s_cap: i16 = stations.iter().map(|s| s.capacity).sum();
         let t_len = trains.len();
-        let used_trains = std::cmp::min(t_len, (sum_s_cap as f64 / (t_len as f64 / 0.86)) as usize);
-        // let used_trains = t_len;
+        //let used_trains = std::cmp::min(t_len, (sum_s_cap as f64 / (t_len as f64 / 0.86)) as usize);
+        let used_trains = t_len;
 
         let mut station_connections: Vec<Vec<CId>> = stations.iter().map(|_| vec![]).collect();
 
@@ -191,8 +194,8 @@ impl Model {
 fn shortest_paths(
     stations: &Vec<Station>,
     connections: &Connections,
-) -> (HashMap<(SId, SId), Path>, Distance) {
-    let mut paths = HashMap::new();
+) -> (Paths, Distance) {
+    let mut paths = HashMap::<(SId, SId), Path, FxBuildHasher>::default();
     let mut max_distance: Distance = Distance::MIN;
     let mut distances: Vec<Vec<Distance>> = (0..stations.len())
         .map(|_| (0..stations.len()).map(|_| 0.0).collect())

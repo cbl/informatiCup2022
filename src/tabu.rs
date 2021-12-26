@@ -118,7 +118,7 @@ impl TabuSearch {
                 self.find_neighbour(&mut state, model);
                 solution.0.push(state.clone());
 
-                println!("T{}", state.t);
+                //println!("T{}", state.t);
 
                 if self.track_fitness {
                     // if solution.fitness() < min_delay {
