@@ -4,6 +4,8 @@ use rstrain::parser::parse;
 use rstrain::plotter::Plotter;
 use rstrain::tabu::TabuSearch;
 use std::cmp;
+use std::io;
+use std::io::prelude::*;
 
 fn main() {
     let matches = App::new("rstrain")
@@ -47,12 +49,6 @@ fn main() {
                 .takes_value(false)
                 .help("Plots the fitness progress"),
         )
-        .arg(
-            Arg::with_name("INPUT")
-                .help("Input model")
-                .required(true)
-                .index(1),
-        )
         .get_matches();
 
     let max_millis: u128 = match matches
@@ -81,7 +77,16 @@ fn main() {
         }
     };
 
-    let mut model = parse(&matches.value_of("INPUT").unwrap().to_string());
+    let stdin = io::stdin();
+    let mut input = String::new();
+
+    // let lines = ;
+    for line in stdin.lock().lines() {
+        input += &line.unwrap();
+        input += &"\n".to_string();
+    }
+
+    let mut model = parse(&input);
 
     model.t_max = match matches
         .value_of("TMAX")

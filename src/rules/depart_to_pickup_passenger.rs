@@ -1,5 +1,3 @@
-use std::cmp::Ordering;
-
 use crate::connection::Distance;
 use crate::rule::{Closure, Result, Rule};
 
@@ -25,10 +23,9 @@ pub fn rules() -> Vec<Rule> {
                     return Result::None;
                 }
 
-                // let mut to_pick_up = vec![];
                 let mut a_nearest_p_distance: Option<Distance> = None;
                 for (s_id, passengers) in state.s_passengers.iter().enumerate() {
-                    for p_id in passengers {
+                    for _ in passengers {
                         let distance = model.distance(s_id, a.to);
                         match a_nearest_p_distance {
                             None => a_nearest_p_distance = Some(distance),
@@ -38,13 +35,12 @@ pub fn rules() -> Vec<Rule> {
                                 }
                             }
                         }
-                        // to_pick_up.push((p_id, s_id));
                     }
                 }
 
                 let mut b_nearest_p_distance: Option<Distance> = None;
                 for (s_id, passengers) in state.s_passengers.iter().enumerate() {
-                    for p_id in passengers {
+                    for _ in passengers {
                         let distance = model.distance(s_id, b.to);
                         match b_nearest_p_distance {
                             None => b_nearest_p_distance = Some(distance),
@@ -54,33 +50,8 @@ pub fn rules() -> Vec<Rule> {
                                 }
                             }
                         }
-                        // to_pick_up.push((p_id, s_id));
                     }
                 }
-
-                // to_pick_up.sort_by(|(_, a_s_id), (_, b_s_id)| {
-                //     match model.distance(*a_s_id, a.to) < model.distance(*b_s_id, a.to) {
-                //         true => Ordering::Less,
-                //         false => Ordering::Greater,
-                //     }
-                // });
-
-                // if to_pick_up.len() == 0 {
-                //     return Result::None;
-                // }
-
-                // let a_nearest_p = to_pick_up.first().unwrap();
-
-                // let mut to_pick_up = to_pick_up.clone();
-
-                // to_pick_up.sort_by(|(_, a_s_id), (_, b_s_id)| {
-                //     match model.distance(*a_s_id, b.to) < model.distance(*b_s_id, b.to) {
-                //         true => Ordering::Less,
-                //         false => Ordering::Greater,
-                //     }
-                // });
-
-                // let b_nearest_p = to_pick_up.first().unwrap();
 
                 if let Some(a_distance) = a_nearest_p_distance {
                     if let Some(b_distance) = b_nearest_p_distance {
@@ -88,16 +59,6 @@ pub fn rules() -> Vec<Rule> {
                     }
                 }
 
-                // let a_distance: Distance = model.distance(a.to, a_nearest_p.1);
-
-                // let b_distance: Distance = model.distance(b.to, b_nearest_p.1);
-
-                // println!(
-                //     "({:?}) {} < {} ({:?})",
-                //     a_nearest_p, a_distance, b_distance, b_nearest_p
-                // );
-
-                // Result::Some(a_distance < b_distance)
                 Result::None
             }),
         }),
