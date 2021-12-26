@@ -19,5 +19,5 @@ cargo check
 ### Run
 
 ```shell
-cargo run --release "$(<test-cases/long/input.txt)"
+cat test-cases/long/input | cargo run --release
 ```

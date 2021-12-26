@@ -1,7 +1,6 @@
-use crate::connection::Distance;
 use crate::rule::{Closure, Result, Rule};
 
-/// Passengers should be picked up by the nearest train.
+/// Passengers should be picked up by a train.
 pub fn rules() -> Vec<Rule> {
     vec![
         Rule::IsDepartGtNone(Closure {
@@ -12,12 +11,6 @@ pub fn rules() -> Vec<Rule> {
                     Result::Some(state.s_passengers.iter().map(|p| p.len()).sum::<usize>() > 0)
                 }
             }),
-        }),
-        // depart vs depart
-        Rule::IsDepartGtDepart(Closure {
-            c: Box::new(|a, b, state, model| {
-                Result::None
-            }),
-        }),
+        })
     ]
 }
