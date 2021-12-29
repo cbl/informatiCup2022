@@ -1,3 +1,5 @@
+#![warn(unused_extern_crates)]
+
 use clap::{App, Arg, ArgMatches};
 use rstrain::debug::debug;
 use rstrain::parser::parse;

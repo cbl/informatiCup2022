@@ -1,2 +1,2 @@
 #!/bin/bash
-./target/release/rstrain
+./target/release/rstrain -t 1000 -d
