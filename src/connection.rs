@@ -11,9 +11,11 @@ pub type Connections = Vec<Connection>;
 pub struct Connection {
     pub name: Name,
     pub distance: Distance,
+
     /// The capacity determines how many trains can travel on it at the same
     /// time.
     pub capacity: types::Capacity,
+
     pub a: SId,
     pub b: SId,
 }

@@ -3,7 +3,6 @@ use crate::solution::Solution;
 use prettytable::{Cell, Row, Table};
 
 pub fn debug(model: Model, solution: Solution, duration: u128, checked_moves: usize) {
-    // Create the table
     let mut table = Table::new();
 
     println!("\n{}", solution.to_string(&model, true));

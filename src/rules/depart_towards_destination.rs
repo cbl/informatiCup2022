@@ -10,31 +10,15 @@ pub fn rules() -> Vec<Rule> {
                     return Result::None;
                 }
 
-                let ps = state.t_passengers[a.t_id]
+                let p_id: usize = *state.t_passengers[a.t_id]
                     .clone()
                     .into_iter()
-                    .collect::<Vec<usize>>();
-                let a_p_id = ps.first().unwrap();
+                    .collect::<Vec<usize>>()
+                    .first()
+                    .unwrap();
 
-                let a_distance = model.distance(a.to, model.passengers[*a_p_id].destination);
-
-                let ps = state.t_passengers[a.t_id]
-                    .clone()
-                    .into_iter()
-                    .collect::<Vec<usize>>();
-                let b_p_id = ps.first().unwrap();
-
-                let b_distance = model.distance(b.to, model.passengers[*b_p_id].destination);
-
-                // let a_sum_distance: Distance = state.t_passengers[a.t_id]
-                //     .iter()
-                //     .map(|p_id| model.distance(a.to, model.passengers[*p_id].destination))
-                //     .sum();
-
-                // let b_sum_distance: Distance = state.t_passengers[b.t_id]
-                //     .iter()
-                //     .map(|p_id| model.distance(b.to, model.passengers[*p_id].destination))
-                //     .sum();
+                let a_distance = model.distance(a.to, model.passengers[p_id].destination);
+                let b_distance = model.distance(b.to, model.passengers[p_id].destination);
 
                 Result::Some(a_distance < b_distance)
             }),

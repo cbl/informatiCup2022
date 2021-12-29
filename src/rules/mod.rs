@@ -9,8 +9,6 @@ mod depart_to_exact_destination;
 mod depart_to_pickup_passenger;
 mod depart_towards_destination;
 mod detrain_arrived_passenger;
-// mod free_up_space;
-// mod wait_for_full_connection;
 
 use crate::rule::Rule;
 

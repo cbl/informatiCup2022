@@ -4,24 +4,38 @@ use crate::solution::Solution;
 use crate::state::State;
 use crate::types::TimeDiff;
 use fxhash::hash32;
+use fxhash::FxBuildHasher;
 use linked_hash_set::LinkedHashSet;
 use rand::seq::SliceRandom;
 use rand::Rng;
 use std::time::Instant;
 
 pub struct TabuSearch {
-    tabu: LinkedHashSet<u32>,
+    /// A HashSet that holds states that have been visited before. States are
+    /// popped when the maximum number of states have been added to the set.
+    tabu: LinkedHashSet<u32, FxBuildHasher>,
+
+    /// The maximum number of milli seconds the algorithm list should run.
     max_millis: u128,
+
+    /// The maxmimum number of items in the tabu list.
     tabu_size: usize,
+
+    /// Wether to track fitness or not.
     track_fitness: bool,
+
+    /// A vector containing the best sum of delays fo all iterations.
     pub fitness: Vec<TimeDiff>,
+
+    /// The number of moves that have been checked.
     pub checked_moves: usize,
 }
 
 impl TabuSearch {
+    /// Constructs a new TabuSearch struct.
     pub fn new(max_millis: u128, tabu_size: usize, track_fitness: bool) -> TabuSearch {
         TabuSearch {
-            tabu: LinkedHashSet::new(),
+            tabu: LinkedHashSet::<u32, FxBuildHasher>::default(),
             fitness: vec![],
             max_millis,
             tabu_size,
@@ -78,12 +92,12 @@ impl TabuSearch {
             }
 
             // add to tabu list
-            self.add_tabu(state);
+            self.add_to_tabu_list(state);
         }
     }
 
     /// Add state to tabu list
-    fn add_tabu(&mut self, state: &State) {
+    fn add_to_tabu_list(&mut self, state: &State) {
         self.tabu.insert(hash32(state));
 
         if self.tabu.len() > self.tabu_size {
@@ -108,35 +122,28 @@ impl TabuSearch {
         // the current state
         let mut state: State = model.initial_state();
 
-        //
+        // The start time for the next iteration.
         let mut start: usize = 0;
-
-        // let mut overloads = 0;
 
         while best_solution.fitness() > 0 && !best_solution.has_station_overload() {
             while state.t < model.t_max {
                 self.find_neighbour(&mut state, model);
                 solution.0.push(state.clone());
 
-                println!("T{}", state.t);
-
                 if self.track_fitness {
-                    // if solution.fitness() < min_delay {
-                    //     min_delay = solution.fitness();
-                    // }
+                    if solution.fitness() < min_delay {
+                        min_delay = solution.fitness();
+                    }
                     self.fitness.push(solution.fitness());
                 }
 
                 state.next(model);
 
                 if state.has_station_overload() {
-                    // overloads += 1;
-                    // println!("{}", overloads);
                     break;
                 }
 
                 if state.p_arrived.len() == model.passengers.len() {
-                    // println!("all arrived...");
                     break;
                 }
             }

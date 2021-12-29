@@ -1,11 +1,35 @@
-use clap::{App, Arg};
+use clap::{App, Arg, ArgMatches};
 use rstrain::debug::debug;
 use rstrain::parser::parse;
 use rstrain::plotter::Plotter;
 use rstrain::tabu::TabuSearch;
-use std::cmp;
 use std::io;
 use std::io::prelude::*;
+use std::str::FromStr;
+
+fn get_std_in() -> String {
+    let stdin = io::stdin();
+    let mut input = String::new();
+
+    for line in stdin.lock().lines() {
+        input += &line.unwrap();
+        input += &"\n".to_string();
+    }
+
+    input
+}
+
+fn parse_arg<T: FromStr>(
+    matches: &ArgMatches,
+    name: &'static str,
+    default: &'static str,
+) -> Result<T, T::Err> {
+    matches
+        .value_of(name)
+        .unwrap_or(default)
+        .to_string()
+        .parse()
+}
 
 fn main() {
     let matches = App::new("rstrain")
@@ -18,7 +42,7 @@ fn main() {
                 .long("tabu-size")
                 .takes_value(true)
                 .help(
-                    "Size of tabu list, increase for large models, required memory is <TABU> * 32bit (default 80000000)",
+                    "Size of tabu list, increase for large models (default 8000000)",
                 ),
         )
         .arg(
@@ -26,7 +50,7 @@ fn main() {
                 .short("t")
                 .long("time")
                 .takes_value(true)
-                .help("Max search duration in milliseconds (default 30000)"),
+                .help("Max search duration in milliseconds (default 600000)"),
         )
         .arg(
             Arg::with_name("DEBUG")
@@ -47,71 +71,34 @@ fn main() {
                 .short("p")
                 .long("plot")
                 .takes_value(false)
-                .help("Plots the fitness progress"),
+                .help("Plots the fitness progress, plots are located in ./plots"),
         )
         .get_matches();
 
-    let max_millis: u128 = match matches
-        .value_of("TIME")
-        .unwrap_or("600000")
-        .to_string()
-        .parse::<u128>()
-    {
-        Ok(time) => time,
-        Err(_) => {
-            eprintln!("error: invalid input for [time]");
-            return;
-        }
-    };
+    // parse arguments
+    let max_millis = parse_arg(&matches, "TIME", "600000").expect("invalid input for [TIME]");
+    let tabu_size = parse_arg(&matches, "TABU", "8000000").expect("invalid input for [TABU]");
+    let t_max = parse_arg(&matches, "TMAX", "0").expect("invalid input for [TMAX]");
+    let track_fitness = matches.is_present("PLOT");
 
-    let tabu_size = match matches
-        .value_of("TABU")
-        .unwrap_or("80000000")
-        .to_string()
-        .parse::<usize>()
-    {
-        Ok(tabu) => tabu,
-        Err(_) => {
-            eprintln!("error: invalid input for [tabu-size]");
-            return;
-        }
-    };
+    // build model
+    let mut model = parse(&get_std_in());
+    model.t_max = std::cmp::max(model.t_max, t_max);
 
-    let stdin = io::stdin();
-    let mut input = String::new();
+    // construct tabu search
+    let mut tabu = TabuSearch::new(max_millis, tabu_size, track_fitness);
 
-    // let lines = ;
-    for line in stdin.lock().lines() {
-        input += &line.unwrap();
-        input += &"\n".to_string();
-    }
-
-    let mut model = parse(&input);
-
-    model.t_max = match matches
-        .value_of("TMAX")
-        .unwrap_or("0")
-        .to_string()
-        .parse::<usize>()
-    {
-        Ok(t_max) => cmp::max(t_max, model.t_max),
-        Err(_) => {
-            eprintln!("error: invalid input for [t-max]");
-            return;
-        }
-    };
-
-    let mut tabu = TabuSearch::new(max_millis, tabu_size, matches.is_present("PLOT"));
-
+    // run tabu search
     let (solution, duration) = tabu.search(&model);
 
+    // print result
     if matches.is_present("DEBUG") {
         debug(model, solution, duration, tabu.checked_moves);
     } else {
         println!("{}", solution.to_string(&model, false));
     }
 
-    // plot the fitness
+    // plot fitness
     if matches.is_present("PLOT") {
         #[allow(unused_must_use)]
         {

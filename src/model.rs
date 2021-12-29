@@ -5,30 +5,59 @@ use crate::rules::get_rules;
 use crate::state::State;
 use crate::station::{Id as SId, Station};
 use crate::train::{Id as TId, Location as TLocation, StartStation, Train};
-use crate::types::{Capacity, Time, TimeDiff};
+use crate::types::{BuildHasher, Capacity, Time, TimeDiff};
 
 use std::collections::HashMap;
 
+/// Holds a path between two stations and the total distance of the path.
 #[derive(Clone)]
 pub struct Path {
+    /// A vector of all stations building the path.
     pub path: Vec<SId>,
+
+    /// The total distance of the path.
     pub distance: Distance,
 }
+
+/// The HashMap type of pairs of stations and the corresponding Path.
+type Paths = HashMap<(SId, SId), Path, BuildHasher>;
 
 /// The model struct holds all existing entities and the corresponding meta
 /// data. This includes a list of stations, connections, trains and passengers.
 pub struct Model {
+    /// A vector containing all stations of the model.
     pub stations: Vec<Station>,
+
+    /// A vector containting all connections of the model.
     pub connections: Connections,
+
+    /// A vector containing all trains of the model.
     pub trains: Vec<Train>,
+
+    /// A vector containing all passengers of the model.
     pub passengers: Vec<Passenger>,
+
+    /// Nested vectors mapping all stations ids to the corresponding connection
+    /// ids.
     pub station_connections: Vec<Vec<CId>>,
-    pub paths: HashMap<(SId, SId), Path>,
-    pub max_distance: Distance,
+
+    /// A HashMap mapping pairs of station ids to the corresponding shortest
+    /// path bewteen the stations.
+    pub paths: Paths,
+
+    /// The latest arrival time of all passengers.
     pub max_arrival: Time,
-    pub max_train_capacity: Capacity,
+
+    /// t max.
     pub t_max: Time,
+
+    /// A vector containing all rules.
     pub rules: Vec<Rule>,
+
+    /// The number of trains used to bring all passengers to the destinations.
+    /// The number can be reduced when the amount of trains being used is
+    /// slowing down the process of finding the best solution as the trains are
+    /// blocking each other.
     pub used_trains: usize,
 }
 
@@ -42,11 +71,7 @@ impl Model {
         rules: Vec<Rule>,
     ) -> Model {
         let max_arrival = passengers.iter().map(|p| p.arrival).max().unwrap();
-
-        let sum_s_cap: i16 = stations.iter().map(|s| s.capacity).sum();
         let t_len = trains.len();
-        let used_trains = std::cmp::min(t_len, (sum_s_cap as f64 / (t_len as f64 / 0.86)) as usize);
-        // let used_trains = t_len;
 
         let mut station_connections: Vec<Vec<CId>> = stations.iter().map(|_| vec![]).collect();
 
@@ -55,8 +80,7 @@ impl Model {
             station_connections[connection.b].push(c_id);
         }
 
-        let (paths, max_distance) = shortest_paths(&stations, &connections);
-        let max_train_capacity = trains.clone().iter().map(|t| t.capacity).max().unwrap();
+        let paths = shortest_paths(&stations, &connections);
 
         Model {
             stations,
@@ -65,12 +89,10 @@ impl Model {
             passengers,
             station_connections,
             paths,
-            max_distance,
-            max_train_capacity,
             max_arrival,
-            t_max: (max_arrival as f64 * 1.5) as Time,
+            t_max: max_arrival,
             rules,
-            used_trains,
+            used_trains: t_len,
         }
     }
 
@@ -114,17 +136,22 @@ impl Model {
         Model::new(stations, connections, trains, passengers, get_rules())
     }
 
+    /// The time a train needs to arrive at the given station.
     pub fn train_arrival(&self, t_id: TId, c_id: CId) -> Time {
         (self.connections[c_id].distance / self.trains[t_id].speed).ceil() as Time
     }
 
+    /// Gets the destination station for the given start station id and the
+    /// connection id.
     pub fn get_destination(&self, s: SId, c: CId) -> SId {
         if self.connections[c].a == s {
-            return self.connections[c].b;
+            self.connections[c].b
+        } else {
+            self.connections[c].a
         }
-        self.connections[c].a
     }
 
+    /// Gets the distance between to stations.
     pub fn distance(&self, a: SId, b: SId) -> Distance {
         self.paths.get(&(a, b)).unwrap().distance
     }
@@ -188,12 +215,8 @@ impl Model {
     }
 }
 
-fn shortest_paths(
-    stations: &Vec<Station>,
-    connections: &Connections,
-) -> (HashMap<(SId, SId), Path>, Distance) {
-    let mut paths = HashMap::new();
-    let mut max_distance: Distance = Distance::MIN;
+fn shortest_paths(stations: &Vec<Station>, connections: &Connections) -> Paths {
+    let mut paths = Paths::default();
     let mut distances: Vec<Vec<Distance>> = (0..stations.len())
         .map(|_| (0..stations.len()).map(|_| 0.0).collect())
         .collect();
@@ -202,6 +225,12 @@ fn shortest_paths(
         distances[c.a][c.b] = c.distance;
         distances[c.b][c.a] = c.distance;
     }
+
+    // for k in 0..stations.len() {
+    //     for i in 0..stations.len() {
+    //         for j in 0..stations.len() {}
+    //     }
+    // }
 
     let edge_list: Vec<Vec<SId>> = (0..stations.len())
         .map(|s_id| {
@@ -283,10 +312,6 @@ fn shortest_paths(
                     distance: distance[destination],
                 },
             );
-
-            if distance[destination] > max_distance {
-                max_distance = distance[destination];
-            }
         }
     }
 
@@ -300,5 +325,5 @@ fn shortest_paths(
         );
     }
 
-    (paths, max_distance)
+    paths
 }

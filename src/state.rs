@@ -9,22 +9,44 @@ use std::hash::{Hash, Hasher};
 
 #[derive(Clone, PartialEq)]
 pub struct State {
+    /// The time of the state.
     pub t: Time,
+
+    /// A vector that maps station ids to the corresponding capacities.
     pub s_capacity: Vec<Capacity>,
+
+    /// A vector that maps connection ids to the corresponding capacities.
     pub c_capacity: Vec<Capacity>,
+
+    /// A vector that maps train ids to the corresponding capacities.
     pub t_capacity: Vec<Capacity>,
+
+    /// A vector that maps train ids to the corresponding train location.
     pub t_location: Vec<TLocation>,
+
+    /// A vector that maps passenger ids to the corresponding passenger location.
     pub p_location: Vec<PLocation>,
+
+    /// A vector that maps train ids to a vector of passenger ids that are
+    /// located in the corresponding train.
     pub t_passengers: Vec<IdSet>,
+
+    /// A vector that maps station ids to a vector of passenger ids that are
+    /// located in the corresponding station.
     pub s_passengers: Vec<IdSet>,
+
+    /// A vector containing passenger ids of arrived passengers.
     pub p_arrived: IdSet,
+
+    /// A vector that maps passenger ids to the corresponding delay.
     pub p_delays: Vec<TimeDiff>,
+
+    /// A vector containing moves that have been pushed to this state.
     pub moves: Vec<Move>,
 }
 
 impl State {
-    //
-
+    /// Constructs a new State struct.
     pub fn new(
         t: Time,
         s_capacity: Vec<Capacity>,
@@ -58,9 +80,9 @@ impl State {
             t_capacity,
             t_location,
             p_location,
-            t_passengers: (0..t_len).map(|_| IdSet::new()).collect(),
+            t_passengers: (0..t_len).map(|_| IdSet::default()).collect(),
             s_passengers,
-            p_arrived: IdSet::new(),
+            p_arrived: IdSet::default(),
             moves: vec![],
             p_delays,
         }
@@ -98,6 +120,10 @@ impl State {
         self.s_capacity.iter().any(|&c| c < 0)
     }
 
+    /// Generates the state for the next point in time, which includes:
+    /// - increase `t` by `1`
+    /// - clearing all moves
+    /// - updating train locations for arrived trains
     pub fn next(&mut self, model: &Model) {
         self.t += 1;
         self.moves = vec![];
@@ -105,7 +131,7 @@ impl State {
         // check for arrived trains
         for (t_id, location) in self.t_location.clone().iter().enumerate() {
             if let TLocation::Connection(c_id, s_id, t_start) = location {
-                // Zeiteinheiten * Geschwindigkeit >= Streckenlänge
+                // time * speed >= distance
                 // https://github.com/informatiCup/informatiCup2022/issues/7
 
                 // progress in percentage
@@ -113,11 +139,8 @@ impl State {
                     / model.connections[*c_id].distance;
 
                 if p >= 1.0 {
-                    // todo: store arrived trains?
                     self.t_location[t_id] = TLocation::Station(*s_id);
-                    // decrease station capacity
                     self.s_capacity[*s_id] -= 1;
-                    // increase connection capacity
                     self.c_capacity[*c_id] += 1;
                 }
             }
@@ -127,8 +150,6 @@ impl State {
     /// Gets a list of legal moves for the given train.
     pub fn get_moves(&self, t_id: TId, model: &Model) -> Vec<Move> {
         let mut moves: Vec<Move> = vec![];
-
-        if self.t == 0 {}
 
         match self.t_location[t_id] {
             // when the train has not started on any station yet, it will be
@@ -146,13 +167,14 @@ impl State {
                 }
             }
             // no moves possible when the given train is on a connection.
-            TLocation::Connection(_, _, _) => (),
+            _ => (),
         };
 
         moves
     }
 
-    pub fn boardings(&self, t_id: TId, s_id: SId, model: &Model) -> Vec<Move> {
+    /// Gets a vector of boarding moves for the given train and station.
+    fn boardings(&self, t_id: TId, s_id: SId, model: &Model) -> Vec<Move> {
         self.s_passengers[s_id]
             .iter()
             .filter(|&p_id| model.passengers[*p_id].size <= self.t_capacity[t_id])
@@ -166,7 +188,8 @@ impl State {
             .collect()
     }
 
-    pub fn detrains(&self, t_id: TId, s_id: SId) -> Vec<Move> {
+    /// Gets a vector of detrains for the given train and station.
+    fn detrains(&self, t_id: TId, s_id: SId) -> Vec<Move> {
         self.t_passengers[t_id]
             .iter()
             .map(|p_id| {
@@ -179,7 +202,8 @@ impl State {
             .collect()
     }
 
-    pub fn departments(&self, t_id: TId, s_id: SId, model: &Model) -> Vec<Move> {
+    /// Gets a list of departments for the given train and station.
+    fn departments(&self, t_id: TId, s_id: SId, model: &Model) -> Vec<Move> {
         model.station_connections[s_id]
             .iter()
             .filter(|&c_id| self.c_capacity[*c_id] > 0)
@@ -209,7 +233,7 @@ impl State {
             .collect()
     }
 
-    /// Make move and apply the corresponding changes to the state.
+    /// Push a move and apply the corresponding changes to the state.
     pub fn push(&mut self, m: Move, model: &Model) {
         self.moves.push(m);
 
@@ -248,6 +272,7 @@ impl State {
         }
     }
 
+    /// Pop a move from the state and undo the corresponding changes.
     pub fn pop(&mut self, model: &Model) -> Option<Move> {
         if let Some(m) = self.moves.pop() {
             match m {

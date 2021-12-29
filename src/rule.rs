@@ -4,12 +4,15 @@ use crate::move_::{Move, MoveTr};
 use crate::state::State;
 use std::ops::Not;
 
+/// The `Result` type specifies whether a rule has a result and what the result
+/// is.
 pub enum Result {
     Some(bool),
     None,
 }
 
 impl Result {
+    /// Returns `true` if the result is a [`Some`] value.
     pub fn is_some(&self) -> bool {
         match self {
             Result::None => false,
@@ -17,6 +20,7 @@ impl Result {
         }
     }
 
+    /// Returns `false` if the result is a [`None`] value.
     pub fn is_none(&self) -> bool {
         !self.is_some()
     }
@@ -41,19 +45,7 @@ where
     pub c: Box<dyn Fn(&A, &B, &State, &Model) -> Result>,
 }
 
-pub struct ClosureAny<A>
-where
-    A: MoveTr,
-{
-    pub c: Box<dyn Fn(&A, &State, &Model) -> Result>,
-}
-
 pub enum Rule {
-    IsBoardGtAny(ClosureAny<Board>),
-    IsDetrainGtAny(ClosureAny<Detrain>),
-    IsDepartGtAny(ClosureAny<Depart>),
-    IsStartGtAny(ClosureAny<Start>),
-
     IsBoardGtBoard(Closure<Board, Board>),
     IsDetrainGtDetrain(Closure<Detrain, Detrain>),
     IsDepartGtDepart(Closure<Depart, Depart>),
@@ -76,23 +68,6 @@ pub enum Rule {
 
 impl Rule {
     pub fn is_gt(&self, a: &Move, b: &Move, state: &State, model: &Model) -> Result {
-        // board vs any
-        if let (Rule::IsBoardGtAny(rule), Move::Board(a)) = (self, a) {
-            return (rule.c)(a, state, model);
-        }
-        // detrain vs any
-        if let (Rule::IsDetrainGtAny(rule), Move::Detrain(a)) = (self, a) {
-            return (rule.c)(a, state, model);
-        }
-        // depart vs any
-        if let (Rule::IsDepartGtAny(rule), Move::Depart(a)) = (self, a) {
-            return (rule.c)(a, state, model);
-        }
-        // start vs any
-        if let (Rule::IsStartGtAny(rule), Move::Start(a)) = (self, a) {
-            return (rule.c)(a, state, model);
-        }
-
         // board vs board
         if let (Rule::IsBoardGtBoard(rule), Move::Board(a), Move::Board(b)) = (self, a, b) {
             return (rule.c)(a, b, state, model);
