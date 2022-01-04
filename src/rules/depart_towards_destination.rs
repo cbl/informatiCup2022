@@ -6,7 +6,7 @@ pub fn rules() -> Vec<Rule> {
         // depart vs depart
         Rule::IsDepartGtDepart(Closure {
             c: Box::new(|a, b, state, model| {
-                if state.t_passengers[a.t_id].len() == 0 || state.t_passengers[b.t_id].len() == 0 {
+                if state.t_passengers[a.t_id].len() == 0 {
                     return Result::None;
                 }
 

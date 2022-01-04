@@ -1,10 +1,11 @@
 use crate::connection::Id as CId;
 use crate::station::Id as SId;
 use crate::types;
+use rust_decimal::Decimal;
 use std::fmt;
 
 pub type Id = types::Id;
-pub type Speed = f64;
+pub type Speed = Decimal;
 pub type Capacity = types::Capacity;
 
 #[derive(Clone, PartialEq)]

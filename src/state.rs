@@ -2,9 +2,10 @@ use crate::model::Model;
 use crate::move_::{Board, Depart, Detrain, Move, Start};
 use crate::passenger::Location as PLocation;
 use crate::station::Id as SId;
-use crate::train::{Id as TId, Location as TLocation};
+use crate::train::{Id as TId, Location as TLocation, Speed};
 use crate::types::{Capacity, IdSet, Time, TimeDiff};
 
+use rust_decimal::Decimal;
 use std::hash::{Hash, Hasher};
 
 #[derive(Clone, PartialEq)]
@@ -105,10 +106,10 @@ impl State {
                     } else if t < *t_start {
                         false
                     } else {
-                        let p = ((t - *t_start) as f64 * model.trains[*t_id].speed)
+                        let p = (Speed::from(t - *t_start) * model.trains[*t_id].speed)
                             / model.connections[*c_id].distance;
 
-                        p >= 1.0
+                        p >= Decimal::from(1)
                     }
                 }
                 _ => false,
@@ -116,8 +117,14 @@ impl State {
             .count() as Capacity
     }
 
-    pub fn has_station_overload(&self) -> bool {
-        self.s_capacity.iter().any(|&c| c < 0)
+    /// Determines whether a state is legal.
+    ///
+    /// As state is not legal when the capacity of any station is < 0.
+    ///
+    /// The implementation ensure that other illegal states are not possible when
+    /// only legal moves are pushed to the state.
+    pub fn is_legal(&self) -> bool {
+        !self.s_capacity.iter().any(|&c| c < 0)
     }
 
     /// Generates the state for the next point in time, which includes:
@@ -135,10 +142,13 @@ impl State {
                 // https://github.com/informatiCup/informatiCup2022/issues/7
 
                 // progress in percentage
-                let p = ((self.t - *t_start) as f64 * model.trains[t_id].speed)
+                let p = (Speed::from(self.t - *t_start) * model.trains[t_id].speed)
                     / model.connections[*c_id].distance;
+                // ((5 - 2) * 0,9999999) = 2,99
+                // ((6 - 2) * 0,9999999) = 3,99
+                // ((5 - 2 - 1) * 0,9999999) = 3,99
 
-                if p >= 1.0 {
+                if p >= Decimal::from(1) {
                     self.t_location[t_id] = TLocation::Station(*s_id);
                     self.s_capacity[*s_id] -= 1;
                     self.c_capacity[*c_id] += 1;

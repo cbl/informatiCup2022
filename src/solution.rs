@@ -1,8 +1,10 @@
 use crate::model::Model;
 use crate::move_::Move;
 use crate::state::State;
-use crate::train::Location as TLocation;
+use crate::train::{Location as TLocation, Speed};
 use crate::types::{IdSet, TimeDiff};
+
+use rust_decimal::Decimal;
 
 /// The soltion holds a list of states at any given point in
 /// time.
@@ -26,14 +28,14 @@ impl Solution {
         self.0[self.0.len() - 1].p_delays.clone()
     }
 
-    /// Determines whether the latest state has a station overload.
-    pub fn has_station_overload(&self) -> bool {
+    /// Determines whether the latest state has is legal.
+    pub fn is_legal(&self) -> bool {
         let len = self.0.len();
 
         if len == 0 {
             false
         } else {
-            self.0[len - 1].has_station_overload()
+            self.0[len - 1].is_legal()
         }
     }
 
@@ -79,9 +81,9 @@ impl Solution {
                         model.trains[t_id].name,
                         model.connections[*c_id].name,
                         model.stations[*s_id].name,
-                        ((t - *t_start) as f64 * model.trains[t_id].speed)
+                        (Speed::from(t - *t_start) * model.trains[t_id].speed)
                             / model.connections[*c_id].distance
-                            * 100.0
+                            * Decimal::from(100)
                     ));
                 }
             }

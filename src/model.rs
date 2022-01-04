@@ -4,10 +4,12 @@ use crate::rule::Rule;
 use crate::rules::get_rules;
 use crate::state::State;
 use crate::station::{Id as SId, Station};
-use crate::train::{Id as TId, Location as TLocation, StartStation, Train};
+use crate::train::{Id as TId, Location as TLocation, Speed, StartStation, Train};
 use crate::types::{BuildHasher, Capacity, Time, TimeDiff};
+use std::cmp::Ordering;
+use std::collections::{BinaryHeap, HashMap};
 
-use std::collections::HashMap;
+use rust_decimal::Decimal;
 
 /// Holds a path between two stations and the total distance of the path.
 #[derive(Clone)]
@@ -17,6 +19,26 @@ pub struct Path {
 
     /// The total distance of the path.
     pub distance: Distance,
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub struct ClosestStation {
+    pub distance: Distance,
+    pub s_id: SId,
+}
+
+impl PartialOrd for ClosestStation {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        other.distance.partial_cmp(&self.distance)
+    }
+}
+
+impl Eq for ClosestStation {}
+
+impl Ord for ClosestStation {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(&other).unwrap()
+    }
 }
 
 /// The HashMap type of pairs of stations and the corresponding Path.
@@ -40,6 +62,9 @@ pub struct Model {
     /// Nested vectors mapping all stations ids to the corresponding connection
     /// ids.
     pub station_connections: Vec<Vec<CId>>,
+
+    /// A vector containing all stations ordered by the distance for each station.
+    pub closest_stations: Vec<BinaryHeap<ClosestStation>>,
 
     /// A HashMap mapping pairs of station ids to the corresponding shortest
     /// path bewteen the stations.
@@ -82,15 +107,33 @@ impl Model {
 
         let paths = shortest_paths(&stations, &connections);
 
+        let closest_stations = (0..stations.len())
+            .map(|a| {
+                let mut s = BinaryHeap::new();
+
+                for b in 0..stations.len() {
+                    let d = paths.get(&(a, b)).unwrap().distance;
+                    // let r = Reverse(d);
+                    s.push(ClosestStation {
+                        s_id: b,
+                        distance: d,
+                    });
+                }
+
+                s
+            })
+            .collect();
+
         Model {
             stations,
             connections,
             trains,
             passengers,
             station_connections,
+            closest_stations,
             paths,
             max_arrival,
-            t_max: max_arrival,
+            t_max: max_arrival * 3,
             rules,
             used_trains: t_len,
         }
@@ -109,7 +152,7 @@ impl Model {
                 name: format!("T{}", i),
                 start: StartStation::Station(i),
                 capacity: 10,
-                speed: 1.0,
+                speed: Speed::ONE,
             })
             .collect();
 
@@ -126,7 +169,7 @@ impl Model {
         let connections = (0..9)
             .map(|i| Connection {
                 name: format!("L{}", i),
-                distance: 2.0,
+                distance: Distance::TWO,
                 capacity: 3,
                 a: i,
                 b: i + 1,
@@ -137,8 +180,8 @@ impl Model {
     }
 
     /// The time a train needs to arrive at the given station.
-    pub fn train_arrival(&self, t_id: TId, c_id: CId) -> Time {
-        (self.connections[c_id].distance / self.trains[t_id].speed).ceil() as Time
+    pub fn train_arrival(&self, t_id: TId, c_id: CId) -> Decimal {
+        (self.connections[c_id].distance / self.trains[t_id].speed).ceil()
     }
 
     /// Gets the destination station for the given start station id and the
@@ -218,7 +261,7 @@ impl Model {
 fn shortest_paths(stations: &Vec<Station>, connections: &Connections) -> Paths {
     let mut paths = Paths::default();
     let mut distances: Vec<Vec<Distance>> = (0..stations.len())
-        .map(|_| (0..stations.len()).map(|_| 0.0).collect())
+        .map(|_| (0..stations.len()).map(|_| Distance::ZERO).collect())
         .collect();
 
     for c in connections {
@@ -264,7 +307,7 @@ fn shortest_paths(stations: &Vec<Station>, connections: &Connections) -> Paths {
             parent.push(None);
         }
 
-        distance[start] = 0.0;
+        distance[start] = Distance::ZERO;
 
         while !in_tree[v] {
             in_tree[v] = true;
@@ -320,7 +363,7 @@ fn shortest_paths(stations: &Vec<Station>, connections: &Connections) -> Paths {
             (s_id, s_id),
             Path {
                 path: vec![],
-                distance: 0.0,
+                distance: Distance::ZERO,
             },
         );
     }

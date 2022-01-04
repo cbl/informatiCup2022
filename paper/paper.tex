@@ -1,0 +1,661 @@
+\documentclass[a4paper,10pt,parskip]{article}
+
+\nonstopmode
+
+\usepackage{graphicx}
+\usepackage{subfig}
+\usepackage{polyglossia}
+
+\usepackage{amsfonts}
+\usepackage{amsmath}
+
+\usepackage[hidelinks]{hyperref}
+
+\usepackage{fontspec}
+
+\usepackage{algorithm,algorithmicx}
+\usepackage[noend]{algpseudocode}
+
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\cfoot{\thepage}
+\lhead{InformatiCup2022}
+\chead{Team \textit{Off-by-one}}
+\rhead{\nouppercase{\leftmark}}
+
+\widowpenalty 10000
+\clubpenalty 10000
+
+\title{Solving A Railway Optimization Problem Using Tabu-Enhanced Genetic Search}
+\author{
+    \Large Team Off-by-one \\ [2mm]
+    \normasize HTWK Leipzig \\ \texttt{lennart.carstens-behrens@stud.htwk-leipzig.de}
+}
+\date{\today}
+
+\begin{document}
+
+% Title
+\maketitle
+
+\begin{abstract}
+The informatiCup 2022 introduced a railway optimization problem in which trains 
+should bring passengers from one station to another via a railway network with 
+as little waiting time as possible. This paper describes an application of 
+tabu-enhanced genetic search to the railway optimization problem.
+\end{abstract}
+
+\mbox{}\hrule\mbox{}\\
+
+\section{Introduction}
+
+The 17'ths informatiCup\footnote{informatiCup \url{https://gi.de/informaticup}} 
+by the german GI\footnote{Gesellschaft Für Informatik \url{ https://gi.de/ }} - 
+started in october 2021 - introduced a railway optimization problem. The 
+background to this is, that public rail transport in germany will gradually be 
+changed to a coordinated timetable, which aims to reduce passenger waiting times 
+by having local and long-distance trains arrive at key hubs at coordinated times. 
+This timetable is described by Deutsche Bahn as 
+"Taktfahrplan\footnote{Taktfahrplan \url{https://www.deutschlandtakt.de/blog/so-funktioniert-der-taktfahrplan/}}" 
+or "coordinated timetable".
+
+\subsection{Task}
+
+The task of the informatiCup 2022 includes the creation of a timetable for a rail 
+network with the aim of minimizing the total delay of all passengers. The model 
+and the timetable are provided and to be returned in a given format. The formats 
+and more details about the task can be found in the GitHub 
+repository\footnote{Repository \url{https://github.com/informatiCup/informatiCup2022}}.
+
+\section{Literature Review}
+
+The railway optimization problem falls under the computational time complexity 
+class NP-Hard. Which means that no efficient algorithm exists for the problem. 
+Knowing that no efficient solution exists is helpful, according to 
+Steven S. Skienna \cite{skienna08}, as the algorithm designer can productively 
+focus on finding an approximation instead of searching for an algorithm that 
+solves the problem effiently in nondeterministic polynominal-time.
+
+\subsection{Approximation Algorithms}
+
+The goal of an approximation algorithm is to quickly find a good but not optimal 
+solution which can be improved with longer runtime eventually. Algorithms that 
+prooved to work well for optimization problems are Genetic search, Simmulated 
+Annealing and Tabu Search.
+
+\subsubsection{Genetic Algorithms}
+
+Genetic algorithms where first suggested as a search method for optimization 
+problems in 1975 by J. Holland \cite{holland1975}.
+
+A Genetic algorithm borrows biologic concepts by emulating "survival of the 
+fittest" principle. The chance of a solution to "survive" increases with its 
+fitness which is given by an objective function. Furthermore surviving solutions
+are "mutated" by applying random alterations.
+
+\subsubsection{Simulated Annealing}
+
+Simulated Annealing is inspired by a physical process of cooling in thermodynamics, 
+where the energy state of a system is described by the energy state of each 
+particle within the system. The energy state of a particle jumps randomly, 
+this transition is determined by the temperature of the system. The probability 
+that the energy state of a particle changes from $e_i$ and $e_j$ increases with 
+decreasing difference $\Delta e = e_i - e_j$ and decreases with decreasing 
+temperature $T$. The formula for this transition propability $P(e_i, e_j, T)$ is 
+given by
+
+$$
+P(e_i, e_j, T) = e^{(e_i, e_j)/k_bT}
+$$
+
+where $k_b$ is the so called Boltzmanns constant which controls the dependence of 
+the temperature drop on the transition probability.
+
+\subsubsection{Tabu Search}
+\label{sec:tabu}
+
+Fred Glover and Eric Taillard specify in \cite{glover1993} that Tabu Search can 
+be viewed as an iterative technique which explores a set of problem solutions,
+denoted $X$ by repeatedly making moves from one solution $s$ to another solution 
+$s'$ located in the neighbourhood $N(s)$ of $s$. Moves are selected according to 
+a certain criteria in order to find an optimal solution more quickly. Starting from 
+the best solution $s_{best}$, the process is repeated, whereby previously executed 
+moves are disalowed (tabu). This prevents cyclic behaviour and not getting stuck 
+in suboptimal regions to which the creteria may lead.
+
+\subsection{Which One To Choose}
+
+Steven S. Skienna states in \cite{skienna08}, that he has never encountered any 
+problem where genetic algorithms seemed to be the right way to attack these 
+problems and he recommends to stick to Simulated Annealing or Tabu Search instead. 
+The study \cite{FrancisGorman1998}, on the other hand, shows that genetic 
+algorithms enhanced with tabu search can be used effectively specifically for 
+railway optimization problems. The tabu restrictions prevents cyclic behaviour by 
+searching different directions when a state is revisited. Thus, a tabu-enhanced 
+genetic search algorithm, adapted to the task, can be suitable for solving the 
+optimization problem.
+
+\section{Model}
+
+This section describes the model for the input and the timetable, i.e. the 
+solution or output. 
+The input model will be reffered to as $\Theta$ and a timetable will be reffered 
+to as $\Phi$ in the following. $\Phi$ is given by a set of states $\varphi$ for 
+each point in time. A state $\varphi$ holds information about the capacities of 
+each station $C^s$, line $C^l$ and train $C^t$ and the location of all trains 
+$L^t$ and passengers $L^p$.
+
+\hfill \break
+
+\noindent \textbf{Indices}
+
+\noindent \\
+$t$ : index for a point in time \\
+$s$ : index for a station \\
+$l$ : index for a line \\
+$r$ : index for a train \\
+$p$ : index for a passenger \\
+
+A timetable is evaluated by a fitness function $F(\Phi)$ which sums the total 
+delay for all passengers. This function is given by
+
+$$
+F(\Phi) = \sum_{p=0}^{\rho} max(0, d_{p}) + \sum_{p=0}^{\varrho} t_{max}
+$$
+
+where $\rho$ is the number of arrived passengers, $\varrho$ is the number of 
+travelling passengers, $d_{p}$ is the delay of the passenger $p$ and $t_{max}$ 
+is the latest possible arrival time.
+
+\subsection{Moves}
+
+Furthermore, moves $m \in M^{\varphi}_{r}$ where $M^{\varphi}_r$ is a set of 
+all legal moves, can be executed for the train $r$ at state $\varphi$. The 
+following moves are possible:
+
+\begin{itemize}
+    \item $m^{board} \equiv (t,p,s)$ Boarding passenger $p$ to the train $t$ from station $s$
+    \item $m^{detrain} \equiv (t,p,s)$ Detrain passenger $p$ from the train $t$ to station $s$
+    \item $m^{depart} \equiv (t,f,d,l)$ Detrain train $t$ from station $f$ to station $d$ via line $l$
+    \item $m^{start} \equiv (t,s)$ Start train $t$ on station $s$
+    \item $m^{0} \equiv ()$ Null move - nothing happens
+\end{itemize}
+
+\section{Algorithm}
+
+The following describes the algorithms that are used to find an optimal feasable
+solution. The algorithms form a tabu-enhanced genetic search which has been adapted 
+to the specific needs. 
+
+Starting from time $t=0$, a neighbourhood $N(\varphi)$ is scanned for the state 
+$\varphi_t$. This is done by evaluating all legal moves $M_r$ for each train $r$. 
+The best move $m_{best}$ is picked for each train and pushed to $\varphi$. When 
+the best move for each train has been found, $t$ is increased by $1$ and the 
+neighborhood is scanned for the next state. This procedure is repeated until any 
+of the following events occur:
+
+\begin{itemize}
+    \item $t \ge t_{max}$
+    \item $\varphi_t$ is illegal
+    \item all passengers have arrived
+\end{itemize}
+
+Then the genetic search concept of selection is applied by remembering $\Phi$ 
+when it is better than all previously visited timetables. Starting from a 
+randomly selected state $\varphi \in \Phi_{best}$ the neighourhood is scanned 
+again. Executed moves are remembered in a Tabulist $T$ and are excluded from all 
+neighbourhoods in the following iterations.
+
+The pseudocodes for search \ref{alg:search} and neighbour \ref{alg:neighbour}
+summarize the procedure.
+
+\begin{algorithm}
+\caption{search}\label{alg:search}
+\begin{algorithmic}
+    \State $\textit{Create initial Solution } \Phi$
+    \State $\textit{Set best solution } \Phi_{best} = \Phi$
+    \State $\textit{Set initial state } \varphi$
+    \State $\textit{Set start time } t=0$
+    \While {$F(\Phi_{best}) \neq 0$}
+        \While {$t \leq t_{max}$}
+            \State $\textit{Find the best neighbour } \varphi = neighbour(\varphi)$
+            \State $\textit{Push neighbour to solution } \Phi.push(\varphi)$
+            \State $\textit{Set the next null state } \varphi = \varphi.next\_null()$
+
+            \If {$\varphi.is\_illegal() \textit{ or} \textit{ All passengers arrived}$} 
+                \State $\textbf{break}$
+            \EndIf
+        \EndWhile
+
+        \If {$F(\Phi) < F(\Phi_{best})$} 
+            \State $\Phi_{best} = \Phi$
+        \Else
+            \State $\Phi = \Phi_{best}$
+        \EndIf  
+        \State $start = random\_number\_between(0, t)$
+        \State $state = \Phi_{best}.at(start).clone()$
+        \State $\Phi.drain(start..)$
+    \EndWhile
+    \Return {$\Phi_{best}$}
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+\caption{neighbour}\label{alg:neighbour}
+\begin{algorithmic}
+    \For {$r \in \Theta.train\_ids$}
+        \State $\textit{Initalize best move } m_{best}$
+        \State $\textit{Get list of legal moves } M_r = legal\_moves(\varphi, r)$
+        \For {$m \in M_r$}
+            \If {$m > m_{best} \textit{ and } m \notin T$}
+                \State $m_{best} = m$
+            \EndIf
+        \EndFor
+        \If {$m_{best}$}
+            \State $\varphi.push(m_{best})$
+            \State $T.push(m_{best})$
+        \EndIf
+    \EndFor
+    \Return {$\varphi$}
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Evaluating Moves}
+
+An important process of the algorithm is the evaluation of moves. When moves that 
+lead to a bad result are excluded early on, a desirable result can be found much 
+faster. 
+
+A common evaluation practise is, to choose an objective function - mostly reffered 
+to as "cost" or "fitness" function - which for example, maps any tuple of legal 
+moves $m$ and possible states $\varphi$ to $x \in \mathbb{R}$:
+
+$$
+c : (\varphi, m) \rightarrow \mathbb{R}
+$$
+ 
+Another abstraction is to use a set of rules $R$ to define the order of moves. 
+I ended up choosing this method as it made surveying the evaluation much easier. 
+The following pseudo code shows how the comparison works:
+
+\begin{algorithm}
+\caption{is\_greater}\label{is-greater}
+\begin{algorithmic}
+    \For {$r \in R$}
+        \State $\textit{Get result } \psi = r(a, b, \varphi)$
+        \If {$r \neq None$}
+            \Return $\psi$
+        \EndIf
+    \EndFor
+    \Return {$false$}
+\end{algorithmic}
+\end{algorithm}
+
+A rule $r$ is a function $r(a, b, \varphi)$ given by
+
+\[
+    r(a, b, \varphi) = 
+    \begin{cases}
+        true,& \text{if } a \text{ should be prefered to } b\\
+        false,& \text{if } b \text{ should be prefered to } a\\
+        None,& \text{otherwise}
+    \end{cases}
+\]
+
+\noindent where $a$ and $b$ are the compared moves.
+
+To simplify the abstraction, rules are divided into categories, each of which 
+fills a single purpose. The following sets in the given order are optimized for 
+finding an optimal solution for the $large$ data set given by the GI.
+
+\subsubsection{Avoid Station Overload}
+\label{rule:1}
+
+The purpose of the rules in this set is to prevent too many trains from arriving 
+at stations at the same time, thus overloading the station. 
+
+The first rule compares a departure $a^{depart}$ with the null move $b^0$ and is 
+given by
+
+\[
+    r(a^{depart}, b^0, \varphi) = 
+    \begin{cases}
+        false,& \text{if } (c_{est} - 1) \leq -c_{max} \\
+        None,& \text{otherwise}
+    \end{cases}
+\]
+
+\noindent where $c_{est}$ is the estimated station capacity of the arrival station of 
+$a^{depart}$, i.e. the capacity of destination at the arrival time of 
+the departing train and $c_{max}$ is the maximum capacity of the destination. 
+This avoids trains from departing towards overloaded stations.
+
+The second rule compares a train start $a^{start}$ and the null move $b^0$ and is 
+given by 
+
+\[
+    r(a^{start}, b^0, \varphi) = 
+    \begin{cases}
+        false,& \text{if } c_{est} \leq 0 \\
+        None,& \text{otherwise}
+    \end{cases}
+\]
+
+\noindent This avoids station overloading caused by starting a train at a station 
+to which other trains are en route.
+
+\subsubsection{Detrain Arrived Passengers}
+\label{rule:2}
+
+The purpose of the single rule in this set is to detrain passengers from trains that 
+have arrived in the destination station of the passenger.
+
+The rule compares a detrain move $a^{detrain}$ to any of 
+$b \in \{m^{board}, m^{depart}, m^0\}$ and is given by
+
+\[
+    r(a^{detrain}, b, \varphi) = 
+    \begin{cases}
+        true,& \text{if } s = dest_p\\
+        None,& \text{otherwise}
+    \end{cases}
+\]
+
+where $s$ is the station to which the passenger $p$ should be detrained and 
+$dest_p$ is the destination station of $p$.
+
+
+\subsubsection{Board By Arrival}
+\label{rule:3}
+
+The purpose of the single rule in this set is to preferentially board passengers 
+with a short arrival time. 
+
+The rule compares boarding $a^{board}$ to boarding $b^{board}$ and 
+is given by
+
+\[
+    r(a^{board}, b^{start}, \varphi) = 
+    \begin{cases}
+        true,& \text{if } arrival_a < arrival_b\\
+        false,& \text{otherwise}
+    \end{cases}
+\]
+
+\subsubsection{Board By Travel Path}
+\label{rule:4}
+
+The purpose of the single rule in this set is to board passengers together with 
+other passengers that travel the same path.
+
+The rule compares boarding $a^{board}$ to any of $b \in \{m^{depart}, m^0\}$ and 
+is given by
+
+\[
+    r(a^{board}, b, \varphi) = 
+    \begin{cases}
+        true,& \text{if } \exists (t,s,q) \in \{(t,s,q)_a\} \exists p \in P_t (P(p) \subseteq P(q) \lor P(q) \subseteq P(p))\\
+        None,& \text{otherwise}
+    \end{cases}
+\]
+
+where $t$ is the train, $s$ the destination station and $q$ the passenger to be 
+baorded, $P_t$ is the set of passengers travelling in $t$ and $P(p)$ is 
+the shortest path from the current location to the destination of $p$.
+
+\subsubsection{Board To Empty Train}
+\label{rule:5}
+
+The purpose of the single rule in this set is to board passengers on trains that 
+are empty.
+
+The rule compares boarding $a^{board}$ to any of $b \in \{m^{depart}, m^0\}$ and 
+is given by 
+
+\[
+    r(a^{board}, b, \varphi) = 
+    \begin{cases}
+        true,& \text{if } c^t = c^t_{max}\\
+        None,& \text{otherwise}
+    \end{cases}
+\]
+
+where $c^t$ is the capacity of the train $t$ that should be boarded to and 
+$c^t_{max}$ is the maximum capacity of the train.
+
+\subsubsection{Depart To Exact Destination}
+\label{rule:6}
+
+The purpose of the single rule in this set is to prefer departures that bring the 
+train to the destination station of any of its boarded passengers.
+
+The rule compares one departure $a^{depart}$ to another $b^{depart}$ and is 
+given by 
+
+\[
+    r(a^{depart}, b^{depart}, \varphi) = 
+    \begin{cases}
+        true,& \text{if } \forall (t,f,d,l) \in \{(t,f,d,l)_a, (t,f,d,l)_b\} \exists p \in P_t (D(d, d_p) = 0)\\
+        None,& \text{otherwise}
+    \end{cases}
+\]
+
+\noindent where $t$ is the train and $s$ the destination station of the corresponding 
+departure. I.e. For all trains and destinations in move $a$ and $b$, there exists 
+one passenger $p$ in train $t$ so that the distance between destination $d$ of 
+the departure and destination $d_p$ of passenger $p$ equals $0$.
+
+\subsubsection{Depart Towards Destination}
+\label{rule:7}
+
+The purpose of the single rule in this set is to prefer departures that bring the 
+boarded passengers of a train closer towards their corresponding destination.
+
+The rule compares one departure $a^{depart}$ to another $b^{depart}$, and is 
+given by
+
+\[
+    r(a^{depart}, b^{depart}, \varphi) = 
+    \begin{cases}
+        true,& \text{if } D(d_a, p_0) < D(d_b, p_0)\\
+        false,& \text{otherwise}
+    \end{cases}
+\]
+
+\noindent where $d_m$ is the destination of the corresponding move $m$ and $p_0$ is the 
+first passenger in the departed train.
+
+\subsubsection{Depart Passenger Train}
+\label{rule:8}
+
+The purpose of the single rule in this set is to depart non empty trains.
+
+The rule compares a departure $a^{depart}$ to the null move $b^{0}$ and is given 
+by
+
+\[
+    r(a^{depart}, b^{0}, \varphi) = 
+    \begin{cases}
+        true,& \text{if } \exists (t,f,d,l) \in \{(t,f,d,l)_a,()_b\} (c_{t} < c^{max}_t)\\
+        false,& \text{otherwise}
+    \end{cases}
+\]
+
+\noindent where $c_t$ is the current capacity of train $t$ and $c^{max}_t$ is the maximum 
+capactiy of $t$.
+
+\subsubsection{Depart To Pickup Passenger}
+\label{rule:9}
+
+The purpose of the single rule in this set is to depart trains towards 
+passengers that have not arrived at their destination station so far.
+
+The rule compares a departure $a^{depart}$ with the null move $b^0$ and is given by
+
+\[
+    r(a^{depart}, b^{0}, \varphi) = 
+    \begin{cases}
+        false,& \text{if } \exists (t,f,d,l) \in \{(t,f,d,l)_a, ()_b\} (P_t = \emptyset \lor P_f \neq \emptyset)\\
+        None,& \text{otherwise}
+    \end{cases}
+\]
+
+\subsubsection{Choose Train Start}
+\label{rule:10}
+
+\noindent The purpose of the rules in this set is to start trains at stations 
+with passengers. Passengers with low arrival times are prefered.
+
+The first rule compares a train start $a^{start}$ to the null move $b^0$ and is given by
+
+\[
+    r(a^{start}, b^{0}, \varphi) = 
+    \begin{cases}
+        true,& \text{if } \exists (t,s) \in \{(t,s)_a, ()_b\} \exists p \in P_s (|p| \leq c_t)\\
+        None,& \text{otherwise}
+    \end{cases}
+\]
+
+\noindent where $|p|$ is the size of the passenger group $p$. This leads to trains starting 
+at stations with passengers that can be boarded on train $t$.
+
+The second rule compares one train start $a^{start}$ to another $b^{start}$ and 
+is given by
+
+\[
+    r(a^{start}, b^{start}, \varphi) = 
+    \begin{cases}
+        true,& \text{if } min(arrival_P_a) < min(arrival_P_b) \\
+        false,& \text{otherwise}
+    \end{cases}
+\]
+
+\section{Implementation}
+
+The theory of an algorithm alone is not sufficient to find solutions in a 
+desirable time. The implementation must be carried out with the help of suitable 
+data structures that make it possible to quickly change and access information. 
+This section describes the programming language chosen and the methods used to 
+improve performance.
+
+\subsection{Rust}
+
+The implementation was done in the programming language 
+\emph{Rust}\footnote{Rust \url{https://rust-lang.org/}}. \emph{Rust} is designed 
+for performance and safe concurrency. It uses borrow checkers to validate references 
+and thus gurantee memory safety. Due to the high performance it is well suited for 
+optimization problems, and the well written documentation and the ecosystem of the 
+language makes it possible to work productively with it.
+
+\subsection{Data Structures}
+
+Preparing data through appropriate data structures enables significant performance 
+improvements in finding optimal timetables. The following data structures proved 
+to work well for the corresponding use cases.
+
+\begin{itemize}
+    \item \emph{vector}: A contiguous growable array with an access and update 
+    complexity of $O(1)$. It is suitable for holding and adjusting all data of a 
+    state $\varphi$.
+    \item \emph{hashset}: A hashmap with no value. The complexity $O(k)$, where 
+    $k$ is the capacity of the set, allows the quick addition and removal of data.
+    Thus, for a state, there are two vectors of hashesets that make it possible 
+    to quickly access and update the passengers in a train $t$ or on a station $s$.
+    \item \emph{linked-hashset}: A hashset that preverses the insertion oder and 
+    allows popping the first inserted element in $O(1)$ time. It is used to remove 
+    the first state from the tabu list when the maxmium number of states in the set 
+    is reached.
+    \item \emph{fxhash} \footnote{fxhash \url{https://docs.rs/fxhash/latest/fxhash/}}: 
+    The fxhash has its strength in hashing 8bytes on 64-bit platforms and is 
+    significantly faster than the standard sip hash which is desgined to withstand 
+    "hash flooding" DoS attacks. fxhash is used as a hasher for all hashmaps and 
+    hashsets.
+    \item \emph{decimal}: For precise calculation with real numbers. It is used 
+    to represent the speed of trains and distances between stations.
+\end{itemize}
+
+\subsection{Performance}
+
+The precalculation of data allows quick access later on. This saved time by initially
+finding the shortest path and distance between all stations using the djikstra 
+algorithm. This information is accessed by the rules \hyperref[rule:4]{4}, 
+\hyperref[rule:6]{6} and \hyperref[rule:7]{7}.
+
+Furthermore, time could be saved when hashing a state by reducing the attributes 
+used for hashing. The location of all trains $L^r$ and passengers $L^p$, the time 
+$t$ and the pushed moves $M$ are sufficient to uniquely identify a state, since 
+all other attributes can be derived from it. Breaking down the attributes used 
+for hashing a state gave a significant performance improvement on large datasets, 
+as it made adding and accessing the tabu list lest costly.
+
+In addition, benchmarks showed that cloning a state takes a lot of time, especially 
+for large models. Thus, performance could be improved by undoing changes to an 
+instance of a state instead of remembering a duplicate of its old version.
+
+\section{Results}
+
+Table \ref{table:results} shows the results of the algorithm and the 
+implementation in Rust. Two datasets given by the GI are compared, one small 
+named "unused-wildcard-train" and a "large" dataset. 
+
+The tests were performed in a Docker container given 2gb memory and 2 cpus. This 
+corresponds to the given competition circumstances.
+
+If the search does not improve for 25.000 iterations or does not find the optimum 
+within $3 seconds$ it is discontinued and considered a failure. An iteration 
+is defined as a complete search of a neighborhood.
+
+\begin{table}[ht]
+\caption{Model Results}
+\label{table:results}
+\begin{tabular}{ l r r }
+    \hline\hline
+        & unused-wildcard-train & large \\ 
+    \hline
+    Model: &  & \\[3pt]
+    \hspace{3mm}Stations & 5 & 215 \\ 
+    \hspace{3mm}Lines & 8 & 18426 \\ 
+    \hspace{3mm}Trains & 10 & 37 \\ 
+    \hspace{3mm}Passengers & 41 & 721 \\[3pt] 
+    Compared moves: &  & \\[3pt]
+    \hspace{3mm}Average & 257.089 & 900.465 \\ 
+    \hspace{3mm}Maximum & 1.293.599 & 1.362.345 \\ 
+    \hspace{3mm}Minimum & 1.578 & 723.708 \\ 
+    Search time: &  & \\[3pt]
+    \hspace{3mm}Average & 665ms & 264ms \\ 
+    \hspace{3mm}Maximum & 3001ms & 450ms \\ 
+    \hspace{3mm}Minimum & 2ms & 234ms \\ [3pt]
+    Compared moves / millisecond: &  & \\ [3pt]
+    \hspace{3mm}Average & 458 & 3.256 \\ 
+    \hspace{3mm}Maximum & 780 & 3.427 \\ 
+    \hspace{3mm}Minimum & 417 & 2.997 \\ [3pt] 
+    Optimum reached: & 95\% & 100 \% \\ [3pt]
+    \hline
+\end{tabular}
+\end{table}
+
+\section{Conclusion}
+
+The evaluation of moves through carefully crafted rules combined with tabu-enhanced
+genetic search can be used to precisely generate desired timetables. The results 
+show that despite the size of the $large$ set, results are found relatively fast 
+compared to the $unused-wildcard-train$ set. On the one hand, this shows that 
+desirable solution times can easily be reached for large problem sizes, but on 
+the other hand, that the rule set is only optimized for a series of inputs similar 
+to the $large$ set. Thus, rules can be found that apply better for a largerer range 
+of data sets.
+
+Furthermore, it is noticeable that "transit" stations where passengers transfer 
+from one train to another are not necessary in order to find optimal solutions. 
+This may be different for other data sets. For that case, other rules for 
+transfering passengers can be easily added in order to adapt this behavior for 
+the timetable as well.
+
+The tabu-enhanced genetic search algorithm thus has the potential to find desirable 
+solutions not only for the informaticup but also for the Deutsche Bahn's 
+"Taktfahlplan".
+
+\bibliographystyle{plainnat} 
+\bibliography{paper}
+
+\end{document}

@@ -1,7 +1,7 @@
 mod avoid_station_overload;
+mod board_by_arrival;
 mod board_by_destination;
 mod board_by_travel_path;
-mod board_passenger_by_arrival;
 mod board_to_empty_trains;
 mod choose_train_starts;
 mod depart_passenger_trains;
@@ -20,9 +20,9 @@ pub fn get_rules() -> Vec<Rule> {
         //
         detrain_arrived_passenger::rules(),
         //
-        board_passenger_by_arrival::rules(),
+        board_by_arrival::rules(),
         //
-        board_by_destination::rules(),
+        // board_by_destination::rules(),
         //
         board_by_travel_path::rules(),
         //

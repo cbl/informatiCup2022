@@ -14,13 +14,18 @@ pub fn rules() -> Vec<Rule> {
         }),
         // Rule::IsDepartGtDepart(Closure {
         //     c: Box::new(|a, b, state, model| {
-        //         let t_passengers = state.t_passengers.iter().map(|p| p.len()).sum::<usize>();
-        //         let s_passengers = state.s_passengers.iter().map(|p| p.len()).sum::<usize>();
-        //         if t_passengers > 0 || s_passengers == 0 {
-        //             return Result::None;
+        //         for closest_station in &model.closest_stations[a.from] {
+        //             if state.s_passengers[closest_station.s_id].len() == 0 {
+        //                 continue;
+        //             }
+
+        //             let a_distance = model.distance(a.to, closest_station.s_id);
+        //             let b_distance = model.distance(b.to, closest_station.s_id);
+
+        //             return Result::Some(a_distance < b_distance);
         //         }
 
-        //         return Result::None;
+        //         Result::None
         //     }),
         // }),
     ]

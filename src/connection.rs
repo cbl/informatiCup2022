@@ -1,9 +1,10 @@
 use crate::station::Id as SId;
 use crate::types;
+use rust_decimal::Decimal;
 
 pub type Id = types::Id;
 pub type Name = String;
-pub type Distance = f64;
+pub type Distance = Decimal;
 pub type Connections = Vec<Connection>;
 
 /// A connection between station a and station b.

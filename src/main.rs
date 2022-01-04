@@ -78,9 +78,9 @@ fn main() {
         .get_matches();
 
     // parse arguments
-    let max_millis = parse_arg(&matches, "TIME", "600000").expect("invalid input for [TIME]");
-    let tabu_size = parse_arg(&matches, "TABU", "8000000").expect("invalid input for [TABU]");
-    let t_max = parse_arg(&matches, "TMAX", "0").expect("invalid input for [TMAX]");
+    let max_millis = parse_arg(&matches, "TIME", "600000").unwrap();
+    let tabu_size = parse_arg(&matches, "TABU", "8000000").unwrap();
+    let t_max = parse_arg(&matches, "TMAX", "0").unwrap();
     let track_fitness = matches.is_present("PLOT");
 
     // build model

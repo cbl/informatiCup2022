@@ -10,6 +10,8 @@ use rand::seq::SliceRandom;
 use rand::Rng;
 use std::time::Instant;
 
+const STOP_AT_NO_IMPROVEMENTS: i32 = 25000;
+
 pub struct TabuSearch {
     /// A HashSet that holds states that have been visited before. States are
     /// popped when the maximum number of states have been added to the set.
@@ -89,10 +91,10 @@ impl TabuSearch {
             if let Move::None(_) = best_move {
             } else {
                 state.push(best_move, model);
-            }
 
-            // add to tabu list
-            self.add_to_tabu_list(state);
+                // add to tabu list
+                self.add_to_tabu_list(state);
+            }
         }
     }
 
@@ -125,8 +127,12 @@ impl TabuSearch {
         // The start time for the next iteration.
         let mut start: usize = 0;
 
-        while best_solution.fitness() > 0 && !best_solution.has_station_overload() {
-            while state.t < model.t_max {
+        let mut no_improvements = 0;
+
+        let mut illegal = 0;
+
+        while best_solution.fitness() > 0 || !best_solution.is_legal() {
+            while state.t <= model.t_max {
                 self.find_neighbour(&mut state, model);
                 solution.0.push(state.clone());
 
@@ -134,24 +140,26 @@ impl TabuSearch {
                     if solution.fitness() < min_delay {
                         min_delay = solution.fitness();
                     }
-                    self.fitness.push(solution.fitness());
+                    self.fitness.push(min_delay);
                 }
 
                 state.next(model);
 
-                if state.has_station_overload() {
-                    break;
-                }
-
-                if state.p_arrived.len() == model.passengers.len() {
+                if !state.is_legal() || state.p_arrived.len() == model.passengers.len() {
                     break;
                 }
             }
 
             if solution.fitness() < best_solution.fitness() {
                 best_solution = solution.clone();
+                no_improvements = 0;
             } else {
                 solution = best_solution.clone();
+                no_improvements += 1;
+            }
+
+            if no_improvements > STOP_AT_NO_IMPROVEMENTS {
+                break;
             }
 
             start = rnd.gen_range(0..solution.0.len());

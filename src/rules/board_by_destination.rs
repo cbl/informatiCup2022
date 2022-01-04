@@ -4,13 +4,15 @@ use crate::rule::{Closure, Result, Rule};
 pub fn rules() -> Vec<Rule> {
     vec![
         // board vs board
-        Rule::IsBoardGtBoard(Closure {
-            c: Box::new(|a, b, _, model| {
-                if model.passengers[a.p_id].destination == model.passengers[b.p_id].destination {
-                    Result::Some(true)
-                } else {
-                    Result::None
+        Rule::IsBoardGtNone(Closure {
+            c: Box::new(|a, _, state, model| {
+                for p_id in state.t_passengers[a.t_id].iter() {
+                    if model.passengers[a.p_id].destination == model.passengers[*p_id].destination {
+                        return Result::Some(true);
+                    }
                 }
+
+                Result::None
             }),
         }),
     ]

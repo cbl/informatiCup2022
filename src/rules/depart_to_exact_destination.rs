@@ -1,5 +1,7 @@
 use crate::rule::{Closure, Result, Rule};
 
+use rust_decimal::Decimal;
+
 /// A train should depart to the exact destination.
 pub fn rules() -> Vec<Rule> {
     vec![
@@ -9,7 +11,7 @@ pub fn rules() -> Vec<Rule> {
                 if state.t_passengers[a.t_id]
                     .iter()
                     .map(|p_id| model.distance(a.to, model.passengers[*p_id].destination))
-                    .any(|d| d == 0.0)
+                    .any(|d| d == Decimal::ZERO)
                 {
                     return Result::Some(true);
                 }
@@ -17,7 +19,7 @@ pub fn rules() -> Vec<Rule> {
                 if state.t_passengers[b.t_id]
                     .iter()
                     .map(|p_id| model.distance(b.to, model.passengers[*p_id].destination))
-                    .any(|d| d == 0.0)
+                    .any(|d| d == Decimal::ZERO)
                 {
                     return Result::Some(false);
                 }

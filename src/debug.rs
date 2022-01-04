@@ -5,15 +5,22 @@ use prettytable::{Cell, Row, Table};
 pub fn debug(model: Model, solution: Solution, duration: u128, checked_moves: usize) {
     let mut table = Table::new();
 
-    println!("\n{}", solution.to_string(&model, true));
+    // println!("\n{}", solution.to_string(&model, true));
 
     table.add_row(Row::new(vec![
         Cell::new("duration"),
         Cell::new(&format!("{:.3}s", duration as f64 / 1000.0)),
     ]));
     table.add_row(Row::new(vec![
-        Cell::new("checked moves"),
+        Cell::new("compared moves"),
         Cell::new(&format!("{}", checked_moves)),
+    ]));
+    table.add_row(Row::new(vec![
+        Cell::new("compared moves / ms"),
+        Cell::new(&format!(
+            "{}",
+            (checked_moves as f64 / duration as f64) as i32
+        )),
     ]));
     table.add_row(Row::new(vec![
         Cell::new("delays"),
