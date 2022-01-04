@@ -40,7 +40,7 @@ cat test-cases/long/input.txt | docker run --interactive rstrain
 
 ### Advanced Usage
 
-The further use of the program can be printed via the `--help` flag.
+The advanced usage of the program can be printed via the `--help` flag.
 
 ```shell
 USAGE:
