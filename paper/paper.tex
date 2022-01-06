@@ -1,4 +1,4 @@
-\documentclass[a4paper,10pt,parskip]{article}
+\documentclass[a4paper,12pt,parskip]{article}
 
 \nonstopmode
 
@@ -8,6 +8,7 @@
 
 \usepackage{amsfonts}
 \usepackage{amsmath}
+\usepackage{amssymb}
 
 \usepackage[hidelinks]{hyperref}
 
@@ -23,13 +24,24 @@
 \chead{Team \textit{Off-by-one}}
 \rhead{\nouppercase{\leftmark}}
 
+\linespread{1.06}
+\setlength{\parskip}{6pt plus2pt minus2pt}
+\setcounter{tocdepth}{3}
+
 \widowpenalty 10000
 \clubpenalty 10000
 
-\title{Solving A Railway Optimization Problem Using Tabu-Enhanced Genetic Search}
+\title{An Application Of Tabu-Enhanced Genetic Search To A Railway Optimization Problem}
 \author{
-    \Large Team Off-by-one \\ [2mm]
-    \normasize HTWK Leipzig \\ \texttt{lennart.carstens-behrens@stud.htwk-leipzig.de}
+    \\ [1cm]
+    \Large Team Off-by-one \\ [0.5cm]
+    \normalsize Consisting of \\ [0.5cm]
+    \normalsize Lennart Carstens-Behrens \\
+    \texttt{lennart.carstens-behrens@stud.htwk-leipzig.de} \\
+    \normalsize Oliver Herrmann \\
+    \texttt{oliver.herrmann@stud.htwk-leipzig.de} \\ [0.5cm]
+    \normalsize Students of the \\ [0.5cm]
+    \normasize HTWK Leipzig \\ [1.5cm]
 }
 \date{\today}
 
@@ -38,6 +50,8 @@
 % Title
 \maketitle
 
+\vfill
+
 \begin{abstract}
 The informatiCup 2022 introduced a railway optimization problem in which trains 
 should bring passengers from one station to another via a railway network with 
@@ -45,18 +59,21 @@ as little waiting time as possible. This paper describes an application of
 tabu-enhanced genetic search to the railway optimization problem.
 \end{abstract}
 
-\mbox{}\hrule\mbox{}\\
+\newpage
+
+\tableofcontents
+
 
 \section{Introduction}
 
 The 17'ths informatiCup\footnote{informatiCup \url{https://gi.de/informaticup}} 
-by the german GI\footnote{Gesellschaft Für Informatik \url{ https://gi.de/ }} - 
+by the German Informatics Society (GI\footnote{Gesellschaft Für Informatik \url{ https://gi.de/ }}) - 
 started in october 2021 - introduced a railway optimization problem. The 
 background to this is, that public rail transport in germany will gradually be 
 changed to a coordinated timetable, which aims to reduce passenger waiting times 
 by having local and long-distance trains arrive at key hubs at coordinated times. 
 This timetable is described by Deutsche Bahn as 
-"Taktfahrplan\footnote{Taktfahrplan \url{https://www.deutschlandtakt.de/blog/so-funktioniert-der-taktfahrplan/}}" 
+"Taktfahrplan \footnote{Taktfahrplan\url{https://www.deutschlandtakt.de/blog/so-funktioniert-der-taktfahrplan/}}" 
 or "coordinated timetable".
 
 \subsection{Task}
@@ -135,17 +152,19 @@ searching different directions when a state is revisited. Thus, a tabu-enhanced
 genetic search algorithm, adapted to the task, can be suitable for solving the 
 optimization problem.
 
-\section{Model}
+\section{Models}
 
-This section describes the model for the input and the timetable, i.e. the 
-solution or output. 
-The input model will be reffered to as $\Theta$ and a timetable will be reffered 
-to as $\Phi$ in the following. $\Phi$ is given by a set of states $\varphi$ for 
-each point in time. A state $\varphi$ holds information about the capacities of 
-each station $C^s$, line $C^l$ and train $C^t$ and the location of all trains 
-$L^t$ and passengers $L^p$.
+This section describes the models and its designations used in the further course 
+of this paper. The input model, denoted $\Theta$, holds initial information about 
+all entities. The output model, is referred to as timetable, denoted $\Phi$. $\Phi$ 
+is given by a set of states $\varphi$ for each point in time. A state $\varphi$ 
+holds information about the capacities of each station $C^s$, line $C^l$ and train 
+$C^r$ and the location of all trains $L^r$ and passengers $L^p$. 
 
-\hfill \break
+A list of the indices used is given below. These may change depending on need or 
+collision.
+
+\hfill 
 
 \noindent \textbf{Indices}
 
@@ -156,7 +175,9 @@ $l$ : index for a line \\
 $r$ : index for a train \\
 $p$ : index for a passenger \\
 
-A timetable is evaluated by a fitness function $F(\Phi)$ which sums the total 
+\subsection{Timetable Evaluation}
+
+A timetable $\Phi$ is evaluated by a fitness function $F(\Phi)$ which sums the total 
 delay for all passengers. This function is given by
 
 $$
@@ -222,7 +243,7 @@ summarize the procedure.
             \State $\textit{Push neighbour to solution } \Phi.push(\varphi)$
             \State $\textit{Set the next null state } \varphi = \varphi.next\_null()$
 
-            \If {$\varphi.is\_illegal() \textit{ or} \textit{ All passengers arrived}$} 
+            \If {$\varphi.is\_illegal() \textbf{ or} \textit{ All passengers arrived}$} 
                 \State $\textbf{break}$
             \EndIf
         \EndWhile
@@ -232,9 +253,9 @@ summarize the procedure.
         \Else
             \State $\Phi = \Phi_{best}$
         \EndIf  
-        \State $start = random\_number\_between(0, t)$
-        \State $state = \Phi_{best}.at(start).clone()$
-        \State $\Phi.drain(start..)$
+        \State $t = random\_number\_between(0, t)$
+        \State $\varphi = \Phi_{best}.at(t).clone()$
+        \State $\Phi.drain(t..)$
     \EndWhile
     \Return {$\Phi_{best}$}
 \end{algorithmic}
@@ -247,7 +268,7 @@ summarize the procedure.
         \State $\textit{Initalize best move } m_{best}$
         \State $\textit{Get list of legal moves } M_r = legal\_moves(\varphi, r)$
         \For {$m \in M_r$}
-            \If {$m > m_{best} \textit{ and } m \notin T$}
+            \If {$m > m_{best} \textbf{ and } m \notin T$}
                 \State $m_{best} = m$
             \EndIf
         \EndFor
@@ -275,8 +296,8 @@ c : (\varphi, m) \rightarrow \mathbb{R}
 $$
  
 Another abstraction is to use a set of rules $R$ to define the order of moves. 
-I ended up choosing this method as it made surveying the evaluation much easier. 
-The following pseudo code shows how the comparison works:
+We ended up choosing this method as it made surveying the evaluation much easier. 
+Pseudocode \ref{is-greater} shows how the comparison is defined:
 
 \begin{algorithm}
 \caption{is\_greater}\label{is-greater}
@@ -415,13 +436,13 @@ is given by
 \[
     r(a^{board}, b, \varphi) = 
     \begin{cases}
-        true,& \text{if } c^t = c^t_{max}\\
+        true,& \text{if } c^t_{\varphi} = c^t_{max}\\
         None,& \text{otherwise}
     \end{cases}
 \]
 
-where $c^t$ is the capacity of the train $t$ that should be boarded to and 
-$c^t_{max}$ is the maximum capacity of the train.
+where $c^t$ is the capacity of the train $t$ at state $\varphi$, that should be 
+boarded to and $c^t_{max}$ is the maximum capacity of the train.
 
 \subsubsection{Depart To Exact Destination}
 \label{rule:6}
@@ -435,15 +456,15 @@ given by
 \[
     r(a^{depart}, b^{depart}, \varphi) = 
     \begin{cases}
-        true,& \text{if } \forall (t,f,d,l) \in \{(t,f,d,l)_a, (t,f,d,l)_b\} \exists p \in P_t (D(d, d_p) = 0)\\
+        true,& \text{if } \forall (t,f,d,l) \in \{a,b\} \exists p \in P_t (D(d, d_p) = 0)\\
         None,& \text{otherwise}
     \end{cases}
 \]
 
 \noindent where $t$ is the train and $s$ the destination station of the corresponding 
-departure. I.e. For all trains and destinations in move $a$ and $b$, there exists 
-one passenger $p$ in train $t$ so that the distance between destination $d$ of 
-the departure and destination $d_p$ of passenger $p$ equals $0$.
+departure. I.e. For all moves $m \in \{a,b\}$, there exists one passenger $p$ in 
+train $t$ so that the distance between destination $d$ of the departure and 
+destination $d_p$ of passenger $p$ equals $0$.
 
 \subsubsection{Depart Towards Destination}
 \label{rule:7}
@@ -476,12 +497,12 @@ by
 \[
     r(a^{depart}, b^{0}, \varphi) = 
     \begin{cases}
-        true,& \text{if } \exists (t,f,d,l) \in \{(t,f,d,l)_a,()_b\} (c_{t} < c^{max}_t)\\
+        true,& \text{if } \exists (t,f,d,l) \in \{(t,f,d,l)_a,()_b\} (c^t_{\varphi} < c^t_{max})\\
         false,& \text{otherwise}
     \end{cases}
 \]
 
-\noindent where $c_t$ is the current capacity of train $t$ and $c^{max}_t$ is the maximum 
+\noindent where $c^t_{\varphi}$ is the capacity of train $t$ at state $\varphi$ and $c^t_{max}$ is the maximum 
 capactiy of $t$.
 
 \subsubsection{Depart To Pickup Passenger}
@@ -495,7 +516,7 @@ The rule compares a departure $a^{depart}$ with the null move $b^0$ and is given
 \[
     r(a^{depart}, b^{0}, \varphi) = 
     \begin{cases}
-        false,& \text{if } \exists (t,f,d,l) \in \{(t,f,d,l)_a, ()_b\} (P_t = \emptyset \lor P_f \neq \emptyset)\\
+        false,& \text{if } \exists (t,f,d,l) \in \{(t,f,d,l)_a, ()_b\} (P_t = \varnothing \lor P_f \neq \varnothing)\\
         None,& \text{otherwise}
     \end{cases}
 \]
@@ -535,17 +556,29 @@ is given by
 The theory of an algorithm alone is not sufficient to find solutions in a 
 desirable time. The implementation must be carried out with the help of suitable 
 data structures that make it possible to quickly change and access information. 
-This section describes the programming language chosen and the methods used to 
-improve performance.
+This section describes the programming language chosen, design decisions and the 
+methods used to improve performance.
 
 \subsection{Rust}
 
-The implementation was done in the programming language 
-\emph{Rust}\footnote{Rust \url{https://rust-lang.org/}}. \emph{Rust} is designed 
-for performance and safe concurrency. It uses borrow checkers to validate references 
-and thus gurantee memory safety. Due to the high performance it is well suited for 
-optimization problems, and the well written documentation and the ecosystem of the 
-language makes it possible to work productively with it.
+The implementation was done in the multi-paradigm programming language 
+\emph{Rust}\footnote{Rust \url{https://rust-lang.org/}}. It is designed 
+for performance and safe concurrency. \emph{Rust} uses borrow checkers to validate 
+references and thus gurantee memory safety. Due to the high performance it is well 
+suited for optimization problems. The well written documentation, the rich 
+ecosystem and the integrated package manager \emph{Cargo}\footnote{Cargo \url{https://doc.rust-lang.org/cargo/guide}} 
+make it possible to work productively with it.
+
+\subsection{Architecture}
+
+The structure of the implementation follows the layout 
+conventions\footnote{Cargo project layout \url{https://doc.rust-lang.org/cargo/guide/project-layout.html}} 
+specified for \emph{Cargo} projects. Except for tests, which are located at the 
+point of implementation of an abstraction. This design decision was made because 
+separating components that involve the same abstractions can increase the complexity 
+of a program. Furthermore, abstractions are located following the single-responsibility 
+principle in the project root. Rules and the definitions of their order are located 
+in the \emph{rules} submodule.
 
 \subsection{Data Structures}
 
@@ -561,7 +594,7 @@ to work well for the corresponding use cases.
     $k$ is the capacity of the set, allows the quick addition and removal of data.
     Thus, for a state, there are two vectors of hashesets that make it possible 
     to quickly access and update the passengers in a train $t$ or on a station $s$.
-    \item \emph{linked-hashset}: A hashset that preverses the insertion oder and 
+    \item \emph{linked-hashset}: A hashset that preverses the insertion order and 
     allows popping the first inserted element in $O(1)$ time. It is used to remove 
     the first state from the tabu list when the maxmium number of states in the set 
     is reached.
@@ -586,7 +619,7 @@ used for hashing. The location of all trains $L^r$ and passengers $L^p$, the tim
 $t$ and the pushed moves $M$ are sufficient to uniquely identify a state, since 
 all other attributes can be derived from it. Breaking down the attributes used 
 for hashing a state gave a significant performance improvement on large datasets, 
-as it made adding and accessing the tabu list lest costly.
+as it made adding and accessing the tabu list less costly.
 
 In addition, benchmarks showed that cloning a state takes a lot of time, especially 
 for large models. Thus, performance could be improved by undoing changes to an 
@@ -602,16 +635,19 @@ The tests were performed in a Docker container given 2gb memory and 2 cpus. This
 corresponds to the given competition circumstances.
 
 If the search does not improve for 25.000 iterations or does not find the optimum 
-within $3 seconds$ it is discontinued and considered a failure. An iteration 
+within $3$ seconds it is discontinued and considered a failure. An iteration 
 is defined as a complete search of a neighborhood.
 
+\newpage
+
+\begin{center}
 \begin{table}[ht]
 \caption{Model Results}
 \label{table:results}
 \begin{tabular}{ l r r }
     \hline\hline
-        & unused-wildcard-train & large \\ 
-    \hline
+        & unused-wildcard-train & large \\
+    \hline\\
     Model: &  & \\[3pt]
     \hspace{3mm}Stations & 5 & 215 \\ 
     \hspace{3mm}Lines & 8 & 18426 \\ 
@@ -620,10 +656,10 @@ is defined as a complete search of a neighborhood.
     Compared moves: &  & \\[3pt]
     \hspace{3mm}Average & 257.089 & 900.465 \\ 
     \hspace{3mm}Maximum & 1.293.599 & 1.362.345 \\ 
-    \hspace{3mm}Minimum & 1.578 & 723.708 \\ 
+    \hspace{3mm}Minimum & 1.578 & 723.708 \\[3pt] 
     Search time: &  & \\[3pt]
     \hspace{3mm}Average & 665ms & 264ms \\ 
-    \hspace{3mm}Maximum & 3001ms & 450ms \\ 
+    \hspace{3mm}Maximum & 3.001ms & 450ms \\ 
     \hspace{3mm}Minimum & 2ms & 234ms \\ [3pt]
     Compared moves / millisecond: &  & \\ [3pt]
     \hspace{3mm}Average & 458 & 3.256 \\ 
@@ -633,6 +669,7 @@ is defined as a complete search of a neighborhood.
     \hline
 \end{tabular}
 \end{table}
+\end{center}
 
 \section{Conclusion}
 

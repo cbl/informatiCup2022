@@ -14,7 +14,7 @@ pub enum Location {
     Station(SId),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Passenger {
     pub name: String,
     pub start: SId,

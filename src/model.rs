@@ -95,6 +95,7 @@ impl Model {
         passengers: Vec<Passenger>,
         rules: Vec<Rule>,
     ) -> Model {
+        println!("{:?}", passengers);
         let max_arrival = passengers.iter().map(|p| p.arrival).max().unwrap();
         let t_len = trains.len();
 
@@ -139,6 +140,7 @@ impl Model {
         }
     }
 
+    /// Constructs a new unique [Model] instance that is used for benchmarks.
     pub fn new_for_bench() -> Model {
         let stations = (0..10)
             .map(|i| Station {

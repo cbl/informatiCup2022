@@ -1,6 +1,6 @@
 # informatiCup2022
 
-An attempt to solve the railway problem introduced in the [informatiCup2022](https://informaticup.github.io/competition/20-current) using tabu-enhanced genetic search.
+An attempt to solve the railway problem introduced in the [informatiCup2022](https://informaticup.github.io/competition/20-current) by the [German Informatics Society (GI)](https://gi.de/) using tabu-enhanced genetic search.
 
 ## Table Of Contents
 
@@ -95,7 +95,7 @@ cat test-cases/long/input.txt | ./target/release/rstrain --debug
 
 prints the following output:
 
-```shell
+```
 ...
 +---------------------+---------+
 | duration            | 0.440s  |

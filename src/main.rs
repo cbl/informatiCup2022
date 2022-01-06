@@ -1,10 +1,9 @@
 #![warn(unused_extern_crates)]
-
 use clap::{App, Arg, ArgMatches};
 use rstrain::debug::debug;
 use rstrain::parser::parse;
 use rstrain::plotter::Plotter;
-use rstrain::tabu::TabuSearch;
+use rstrain::tabu::TabuGeneticSearch;
 use std::io;
 use std::io::prelude::*;
 use std::str::FromStr;
@@ -87,10 +86,10 @@ fn main() {
     let mut model = parse(&get_std_in());
     model.t_max = std::cmp::max(model.t_max, t_max);
 
-    // construct tabu search
-    let mut tabu = TabuSearch::new(max_millis, tabu_size, track_fitness);
+    // construct TabuGeneticSearch
+    let mut tabu = TabuGeneticSearch::new(max_millis, tabu_size, track_fitness);
 
-    // run tabu search
+    // run tabu-enhanced genetic search
     let (solution, duration) = tabu.search(&model);
 
     // print result

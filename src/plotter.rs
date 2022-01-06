@@ -1,4 +1,4 @@
-use crate::tabu::TabuSearch;
+use crate::tabu::TabuGeneticSearch;
 use crate::types::TimeDiff;
 use plotters::prelude::*;
 use std::path::Path;
@@ -23,7 +23,8 @@ impl Plotter {
         file_name
     }
 
-    pub fn plot_fitness(&self, tabu: &TabuSearch) -> Result<(), Box<dyn std::error::Error>> {
+    /// Plofts the fitness progress of a tabu-enhances genetic search procedure.
+    pub fn plot_fitness(&self, tabu: &TabuGeneticSearch) -> Result<(), Box<dyn std::error::Error>> {
         let file_name = self.file_name("fitness");
         let root = BitMapBackend::new(&file_name, (1024, 800)).into_drawing_area();
 

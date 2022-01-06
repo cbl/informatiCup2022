@@ -12,7 +12,8 @@ use std::time::Instant;
 
 const STOP_AT_NO_IMPROVEMENTS: i32 = 25000;
 
-pub struct TabuSearch {
+/// Tabu-enhanced genetic search.
+pub struct TabuGeneticSearch {
     /// A HashSet that holds states that have been visited before. States are
     /// popped when the maximum number of states have been added to the set.
     tabu: LinkedHashSet<u32, FxBuildHasher>,
@@ -33,10 +34,10 @@ pub struct TabuSearch {
     pub checked_moves: usize,
 }
 
-impl TabuSearch {
-    /// Constructs a new TabuSearch struct.
-    pub fn new(max_millis: u128, tabu_size: usize, track_fitness: bool) -> TabuSearch {
-        TabuSearch {
+impl TabuGeneticSearch {
+    /// Constructs a new TabuGeneticSearch struct.
+    pub fn new(max_millis: u128, tabu_size: usize, track_fitness: bool) -> TabuGeneticSearch {
+        TabuGeneticSearch {
             tabu: LinkedHashSet::<u32, FxBuildHasher>::default(),
             fitness: vec![],
             max_millis,

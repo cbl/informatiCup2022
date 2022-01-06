@@ -2,10 +2,11 @@ use crate::model::Model;
 use crate::solution::Solution;
 use prettytable::{Cell, Row, Table};
 
+/// Prints detailed information about a search.
 pub fn debug(model: Model, solution: Solution, duration: u128, checked_moves: usize) {
     let mut table = Table::new();
 
-    // println!("\n{}", solution.to_string(&model, true));
+    println!("\n{}", solution.to_string(&model, true));
 
     table.add_row(Row::new(vec![
         Cell::new("duration"),
