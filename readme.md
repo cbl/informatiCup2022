@@ -137,7 +137,7 @@ cargo doc --open
 
 ## Benchmarks
 
-> Note: Benchmarks use an unstable features of the rust programming languages, which are currently only available on the nightly channel.
+**Note**: Benchmarks use unstable features of the rust programming languages, which are currently only available on the [nightly channel](https://rust-lang.github.io/rustup/concepts/channels.html#working-with-nightly-rust).
 
 Benchmarks can be run via:
 
