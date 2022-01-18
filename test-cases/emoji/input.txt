@@ -1,0 +1,29 @@
+[Stations]
+L1 2
+# this is a comment
+Train 2
+
+
+[Lines]
+L1 P2 L1 3.14 1
+
+# this is also a comment
+l1 P2 Train 4 1
+
+[Trains]
+Trains P2 5.5 30
+[Passengers]
+P1 P2 L1 3 3
+[Trains]
+Train * 0.9999999 50
+#we are in commentopolis! 🌃
+[Stations]
+P2 2
+
+[Passengers]
+
+
+
+
+
+p1 P2 Train 10 3

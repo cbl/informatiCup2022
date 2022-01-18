@@ -1,6 +1,6 @@
 # informatiCup2022
 
-An attempt to solve the railway problem introduced in the [informatiCup2022](https://informaticup.github.io/competition/20-current) by the [German Informatics Society (GI)](https://gi.de/) using tabu-enhanced genetic search.
+An application of tabu-enhanced genetic search to the railway optimization problem introduced in the [informatiCup2022](https://informaticup.github.io/competition/20-current) by the [German Informatics Society (GI)](https://gi.de/).
 
 ## Table Of Contents
 
@@ -11,6 +11,7 @@ An attempt to solve the railway problem introduced in the [informatiCup2022](htt
     -   [Advance Usage](#advance)
         -   [Tip](#tip)
 -   [Tests](#tests)
+-   [Documentation](#docs)
 -   [Benchmarks](#benchmarks)
 -   [Coding Style](#coding-style)
 
@@ -34,7 +35,7 @@ Create a build using the following command:
 cargo build --release
 ```
 
-Then pass the input model via stdin to the the binary:
+Then pass the input model via stdin to the binary:
 
 ```shell
 cat test-cases/long/input.txt | ./target/release/rstrain
@@ -85,15 +86,15 @@ OPTIONS:
 
 #### Tip
 
-The `--debug` flag comes in handy, when it comes to understanding a the progess and performance of a search process for a model.
+The `--debug` and `--plot` flags come in handy, when it comes to understanding a the progess and performance of a search process for a model.
 
 For example:
 
 ```shell
-cat test-cases/long/input.txt | ./target/release/rstrain --debug
+cat test-cases/long/input.txt | ./target/release/rstrain --debug --plot
 ```
 
-prints the following output:
+plots the fitness progress into a graph and prints detailed information similar to the following example:
 
 ```
 ...
@@ -124,7 +125,7 @@ cargo test
 
 <a name="docs"></a>
 
-## Docs
+## Documentation
 
 A web version of the program's documentation can be created and opened using
 the following command:

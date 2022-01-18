@@ -63,6 +63,7 @@ tabu-enhanced genetic search to the railway optimization problem.
 
 \tableofcontents
 
+\newpage
 
 \section{Introduction}
 
@@ -125,7 +126,7 @@ $$
 P(e_i, e_j, T) = e^{(e_i, e_j)/k_bT}
 $$
 
-where $k_b$ is the so called Boltzmanns constant which controls the dependence of 
+where $k_b$ is the so called Boltzmanns constant which defines the dependence of 
 the temperature drop on the transition probability.
 
 \subsubsection{Tabu Search}
@@ -204,8 +205,8 @@ following moves are possible:
 
 \section{Algorithm}
 
-The following describes the algorithms that are used to find an optimal feasable
-solution. The algorithms form a tabu-enhanced genetic search which has been adapted 
+The algorithms that are used to find an optimal feasable solution are described 
+below. The algorithms form a tabu-enhanced genetic search which has been adapted 
 to the specific needs. 
 
 Starting from time $t=0$, a neighbourhood $N(\varphi)$ is scanned for the state 
@@ -637,8 +638,6 @@ corresponds to the given competition circumstances.
 If the search does not improve for 25.000 iterations or does not find the optimum 
 within $3$ seconds it is discontinued and considered a failure. An iteration 
 is defined as a complete search of a neighborhood.
-
-\newpage
 
 \begin{center}
 \begin{table}[ht]

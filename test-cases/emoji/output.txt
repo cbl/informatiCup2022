@@ -1,0 +1,17 @@
+[Train:Trains]
+2 Depart l1
+4 Depart l1
+5 Depart l1
+6 Depart l1
+
+[Train:Train]
+0 Start P2
+2 Depart L1
+
+[Passenger:P1]
+1 Board Train
+6 Detrain
+
+[Passenger:p1]
+1 Board Trains
+3 Detrain
