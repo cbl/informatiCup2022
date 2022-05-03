@@ -54,6 +54,13 @@ fn main() {
                 .help("Max search duration in milliseconds (default 600000)"),
         )
         .arg(
+            Arg::with_name("ITERATIONS")
+                .short("i")
+                .long("iterations")
+                .takes_value(true)
+                .help("Max number of iterations without improvement (default 20000)"),
+        )
+        .arg(
             Arg::with_name("DEBUG")
                 .short("d")
                 .long("debug")
@@ -78,6 +85,7 @@ fn main() {
 
     // parse arguments
     let max_millis = parse_arg(&matches, "TIME", "600000").unwrap();
+    let max_iterations = parse_arg(&matches, "ITERATIONS", "20000").unwrap();
     let tabu_size = parse_arg(&matches, "TABU", "8000000").unwrap();
     let t_max = parse_arg(&matches, "TMAX", "0").unwrap();
     let track_fitness = matches.is_present("PLOT");
@@ -87,7 +95,7 @@ fn main() {
     model.t_max = std::cmp::max(model.t_max, t_max);
 
     // construct TabuGeneticSearch
-    let mut tabu = TabuGeneticSearch::new(max_millis, tabu_size, track_fitness);
+    let mut tabu = TabuGeneticSearch::new(max_millis, max_iterations, tabu_size, track_fitness);
 
     // run tabu-enhanced genetic search
     let (solution, duration) = tabu.search(&model);

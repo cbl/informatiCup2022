@@ -10,8 +10,6 @@ use rand::seq::SliceRandom;
 use rand::Rng;
 use std::time::Instant;
 
-const STOP_AT_NO_IMPROVEMENTS: i32 = 25000;
-
 /// Tabu-enhanced genetic search.
 pub struct TabuGeneticSearch {
     /// A HashSet that holds states that have been visited before. States are
@@ -20,6 +18,9 @@ pub struct TabuGeneticSearch {
 
     /// The maximum number of milli seconds the algorithm list should run.
     max_millis: u128,
+
+    /// The maximum number of iterations without improvement.
+    max_iterations: u128,
 
     /// The maxmimum number of items in the tabu list.
     tabu_size: usize,
@@ -36,11 +37,17 @@ pub struct TabuGeneticSearch {
 
 impl TabuGeneticSearch {
     /// Constructs a new TabuGeneticSearch struct.
-    pub fn new(max_millis: u128, tabu_size: usize, track_fitness: bool) -> TabuGeneticSearch {
+    pub fn new(
+        max_millis: u128,
+        max_iterations: u128,
+        tabu_size: usize,
+        track_fitness: bool,
+    ) -> TabuGeneticSearch {
         TabuGeneticSearch {
             tabu: LinkedHashSet::<u32, FxBuildHasher>::default(),
             fitness: vec![],
             max_millis,
+            max_iterations,
             tabu_size,
             track_fitness,
             checked_moves: 0,
@@ -137,11 +144,19 @@ impl TabuGeneticSearch {
                 self.find_neighbour(&mut state, model);
                 solution.0.push(state.clone());
 
+                if solution.fitness() < min_delay {
+                    min_delay = solution.fitness();
+                    no_improvements = 0;
+                } else {
+                    no_improvements += 1;
+                }
+
                 if self.track_fitness {
-                    if solution.fitness() < min_delay {
-                        min_delay = solution.fitness();
-                    }
                     self.fitness.push(min_delay);
+                }
+
+                if no_improvements > self.max_iterations {
+                    break;
                 }
 
                 state.next(model);
@@ -153,13 +168,11 @@ impl TabuGeneticSearch {
 
             if solution.fitness() < best_solution.fitness() {
                 best_solution = solution.clone();
-                no_improvements = 0;
             } else {
                 solution = best_solution.clone();
-                no_improvements += 1;
             }
 
-            if no_improvements > STOP_AT_NO_IMPROVEMENTS {
+            if no_improvements > self.max_iterations {
                 break;
             }
 
