@@ -2,7 +2,7 @@
 
 An application of tabu-enhanced genetic search to the railway optimization problem introduced in the [informatiCup2022](https://informaticup.github.io/competition/20-current) by the [German Informatics Society (GI)](https://gi.de/).
 
-The project was rewarded with the 2nd place. The project presentation can be seen in the replay of the livestream of the final on [youtube](https://www.youtube.com/watch?v=HXvYeeYx5bI&t=3280s).
+:2nd_place_medal: The project was rewarded with the 2nd place. The project presentation can be seen in the replay of the livestream of the final on [youtube](https://www.youtube.com/watch?v=HXvYeeYx5bI&t=3280s).
 
 ## Table Of Contents
 
