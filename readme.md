@@ -152,7 +152,7 @@ cargo bench
 
 ## Coding Style
 
-Rusts standard code formatter [rustfmt](https://github.com/rust-lang/rustfmt) is used for ensure docing style consistency. It can be run via:
+Rusts standard code formatter [rustfmt](https://github.com/rust-lang/rustfmt) is used for ensure coding style consistency. It can be run via:
 
 ```shell
 cargo fmt
